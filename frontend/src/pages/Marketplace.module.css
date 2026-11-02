@@ -1,0 +1,68 @@
+.marketplace {
+  margin-top: 24px;
+}
+
+.marketplace section {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 24px;
+  margin-top: 24px;
+}
+
+.marketplace h2 {
+  font-size: 1.2rem;
+  margin-bottom: 12px;
+}
+
+.list {
+  list-style: none;
+  margin-top: 16px;
+}
+
+.list li {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.list p {
+  margin: 8px 0;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+}
+
+.form input,
+.form textarea,
+.form select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  background: white;
+}
+
+.form .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox input {
+  width: auto;
+}
+
+.marketplace button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

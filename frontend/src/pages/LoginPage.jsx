@@ -1,15 +1,56 @@
 import { useState } from 'react'
 import styles from './LoginPage.module.css'
 
-export default function LoginPage() {
+export default function LoginPage({ onLoginSuccess, initialError = '' }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState(initialError)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // TODO: wire up to backend auth
-    console.log('Login attempt:', { email, password })
+    if (isSubmitting) return
+
+    setIsSubmitting(true)
+    setError('')
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (response.status === 401) {
+        setError('Invalid email or password.')
+        return
+      }
+
+      if (!response.ok) {
+        setError('Unable to sign in. Please try again.')
+        return
+      }
+
+      const data = await response.json()
+      if (typeof data.access_token !== 'string' || !data.access_token) {
+        setError('Unable to sign in. Please try again.')
+        return
+      }
+
+      try {
+        localStorage.setItem('access_token', data.access_token)
+      } catch {
+        setError('Unable to save your login. Please allow browser storage and try again.')
+        return
+      }
+
+      onLoginSuccess()
+    } catch {
+      setError('Unable to connect to the server. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -84,8 +125,10 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button type="submit" className={styles.submitBtn}>
-              Sign in
+            {error && <p role="alert">{error}</p>}
+
+            <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
