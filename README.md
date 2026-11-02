@@ -7,7 +7,7 @@ A peer-to-peer parking marketplace where people can rent out their driveways.
 ```
 Senior-Project-FA26/
 ├── frontend/      ← React app (Christopher)
-├── backend/       ← Backend (team)
+├── backend/       ← Backend
 └── README.md
 ```
 
