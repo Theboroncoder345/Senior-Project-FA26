@@ -152,6 +152,17 @@ export default function LoginPage() {
             Don't have an account?{' '}
             <Link to="/signup" className={styles.signupLink}>Sign up free</Link>
           </p>
+
+          {/* DEV ONLY — remove before final demo */}
+          {import.meta.env.DEV && (
+            <button
+              type="button"
+              className={styles.devBypass}
+              onClick={() => navigate('/home')}
+            >
+              🛠 Skip Login (Dev Only)
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -333,6 +333,25 @@
   text-decoration: underline;
 }
 
+.devBypass {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  background: none;
+  border: 1.5px dashed #f59e0b;
+  border-radius: 8px;
+  color: #b45309;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.devBypass:hover {
+  background: #fffbeb;
+}
+
 /* ─── Responsive ───────────────────────────────────────────── */
 @media (max-width: 768px) {
   .page {
