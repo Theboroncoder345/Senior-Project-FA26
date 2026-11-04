@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+mapboxgl.accessToken = TOKEN;
 
 export default function ParkingMap({
   destination,
@@ -92,6 +93,32 @@ export default function ParkingMap({
       markers.current.push(marker);
     });
   }, [parkingSpots, mapReady]);
+
+  // Show placeholder if no Mapbox token is configured
+  if (!TOKEN) {
+    return (
+      <div style={{
+        width: "100%",
+        minHeight: "450px",
+        background: "linear-gradient(135deg, #eff8ff, #dbeffe)",
+        border: "2px dashed #b0d9fd",
+        borderRadius: "12px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "0.5rem",
+        padding: "2rem",
+        textAlign: "center",
+      }}>
+        <span style={{ fontSize: "2.5rem" }}>🗺️</span>
+        <p style={{ fontWeight: 700, color: "#1a7fd4", margin: 0 }}>Map coming soon</p>
+        <p style={{ fontSize: "0.8rem", color: "#94a3b8", margin: 0 }}>
+          Add VITE_MAPBOX_ACCESS_TOKEN to .env to enable the map
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div

@@ -1,12 +1,58 @@
-import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
-import ParkingMap from '../ParkingMap'
-import DestinationSearch from '../DestinationSearch'
-import ParkingFilters from '../ParkingFilters'
-import parkingData from '../parkingData'
-import { calculateDistance } from '../distance'
 import styles from './HomePage.module.css'
+
+const MOCK_LISTINGS = [
+  {
+    id: 1,
+    title: 'Private Driveway — Downtown',
+    address: '142 Main St, Springfield',
+    price: 8,
+    type: 'Driveway',
+    available: true,
+  },
+  {
+    id: 2,
+    title: 'Covered Spot Near Stadium',
+    address: '88 Park Ave, Springfield',
+    price: 12,
+    type: 'Covered',
+    available: true,
+  },
+  {
+    id: 3,
+    title: 'Open Lot — City Center',
+    address: '300 Elm Blvd, Springfield',
+    price: 5,
+    type: 'Lot',
+    available: false,
+  },
+  {
+    id: 4,
+    title: 'Quiet Residential Driveway',
+    address: '17 Oak Lane, Springfield',
+    price: 6,
+    type: 'Driveway',
+    available: true,
+  },
+  {
+    id: 5,
+    title: 'Garage Spot — Midtown',
+    address: '500 Commerce Dr, Springfield',
+    price: 15,
+    type: 'Garage',
+    available: true,
+  },
+  {
+    id: 6,
+    title: 'Driveway Near University',
+    address: '23 College Rd, Springfield',
+    price: 7,
+    type: 'Driveway',
+    available: true,
+  },
+]
 
 const TYPE_COLORS = {
   Driveway: { bg: '#eff8ff', color: '#1a7fd4' },
@@ -18,43 +64,18 @@ const TYPE_COLORS = {
 const MOCK_USER = { firstName: 'Christopher', lastName: 'M', email: 'chris@example.com' }
 
 export default function HomePage() {
-  const [destination, setDestination] = useState(null)
-  const [filters, setFilters] = useState({
-    maxPrice: '',
-    maxDistance: '',
-    covered: false,
-    evCharging: false,
-    sortBy: 'distance',
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('All')
+
+  const types = ['All', 'Driveway', 'Covered', 'Lot', 'Garage']
+
+  const filtered = MOCK_LISTINGS.filter((l) => {
+    const matchesSearch =
+      l.title.toLowerCase().includes(search.toLowerCase()) ||
+      l.address.toLowerCase().includes(search.toLowerCase())
+    const matchesFilter = filter === 'All' || l.type === filter
+    return matchesSearch && matchesFilter
   })
-
-  // Use teammate's distance calculation + filtering logic
-  const filteredSpots = useMemo(() => {
-    let results = parkingData.map((spot) => {
-      const distance = destination
-        ? calculateDistance(destination.latitude, destination.longitude, spot.latitude, spot.longitude)
-        : null
-      return { ...spot, distance }
-    })
-
-    if (filters.maxPrice !== '')
-      results = results.filter((s) => s.price <= Number(filters.maxPrice))
-
-    if (filters.maxDistance !== '' && destination)
-      results = results.filter((s) => s.distance <= Number(filters.maxDistance))
-
-    if (filters.covered)
-      results = results.filter((s) => s.covered)
-
-    if (filters.evCharging)
-      results = results.filter((s) => s.evCharging)
-
-    if (filters.sortBy === 'price')
-      results.sort((a, b) => a.price - b.price)
-    else if (destination)
-      results.sort((a, b) => a.distance - b.distance)
-
-    return results
-  }, [destination, filters])
 
   return (
     <div className={styles.page}>
@@ -65,13 +86,21 @@ export default function HomePage() {
         <div className={styles.heroInner}>
           <h1 className={styles.heroTitle}>Find parking near you</h1>
           <p className={styles.heroSub}>Search driveways, lots, and garages available to book right now</p>
-          {/* Teammate's destination search */}
-          <div className={styles.searchWrapper}>
-            <DestinationSearch onSelect={setDestination} />
+          <div className={styles.searchBar}>
+            <span className={styles.searchIcon}>🔍</span>
+            <input
+              type="text"
+              placeholder="Search by address or neighborhood…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={styles.searchInput}
+            />
+            <button className={styles.searchBtn}>Search</button>
           </div>
         </div>
       </section>
 
+      {/* ── Main content ── */}
       <main className={styles.main}>
 
         {/* List your space CTA */}
@@ -83,73 +112,80 @@ export default function HomePage() {
               <p className={styles.ctaSub}>List it for free and start earning money</p>
             </div>
           </div>
-          <a href="/listings/new" className={styles.ctaBtn}>List your space →</a>
+          <Link to="/listings/new" className={styles.ctaBtn}>List your space →</Link>
         </div>
 
-        {/* Filters */}
-        <ParkingFilters filters={filters} setFilters={setFilters} />
-
-        {/* Map + listings side by side */}
-        <div className={styles.mapListLayout}>
-
-          {/* Left — listings */}
-          <div className={styles.listingsCol}>
-            <h2 className={styles.sectionTitle}>
-              {filteredSpots.length} spot{filteredSpots.length !== 1 ? 's' : ''} available
-            </h2>
-
-            {filteredSpots.length > 0 ? (
-              <div className={styles.listingsList}>
-                {filteredSpots.map((spot) => (
-                  <ListingCard key={spot.id} spot={spot} />
-                ))}
-              </div>
-            ) : (
-              <div className={styles.empty}>
-                <p className={styles.emptyIcon}>🔍</p>
-                <p className={styles.emptyTitle}>No spots found</p>
-                <p className={styles.emptySub}>Try adjusting your filters</p>
-              </div>
-            )}
+        {/* Section header + filters */}
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Available spots nearby</h2>
+          <div className={styles.filters}>
+            {types.map((t) => (
+              <button
+                key={t}
+                className={`${styles.filterBtn} ${filter === t ? styles.filterBtnActive : ''}`}
+                onClick={() => setFilter(t)}
+              >
+                {t}
+              </button>
+            ))}
           </div>
-
-          {/* Right — teammate's map */}
-          <div className={styles.mapCol}>
-            <ParkingMap destination={destination} parkingSpots={filteredSpots} />
-          </div>
-
         </div>
+
+        {/* Listings grid */}
+        {filtered.length > 0 ? (
+          <div className={styles.grid}>
+            {filtered.map((listing) => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))}
+          </div>
+        ) : (
+          <div className={styles.empty}>
+            <p className={styles.emptyIcon}>🔍</p>
+            <p className={styles.emptyTitle}>No spots found</p>
+            <p className={styles.emptySub}>Try a different search or filter</p>
+          </div>
+        )}
       </main>
     </div>
   )
 }
 
-function ListingCard({ spot }) {
+function ListingCard({ listing }) {
   const navigate = useNavigate()
-  const typeStyle = TYPE_COLORS[spot.parkingType] ?? { bg: '#f1f5f9', color: '#475569' }
+  const typeStyle = TYPE_COLORS[listing.type] ?? { bg: '#f1f5f9', color: '#475569' }
 
   return (
-    <div className={styles.card} onClick={() => navigate(`/listing/${spot.id}`)}>
+    <div
+      className={`${styles.card} ${!listing.available ? styles.cardUnavailable : ''}`}
+      onClick={() => navigate(`/listing/${listing.id}`)}
+    >
+      <div className={styles.cardImage}>
+        <span className={styles.cardImageIcon}>🅿</span>
+        {!listing.available && (
+          <div className={styles.unavailableBadge}>Unavailable</div>
+        )}
+      </div>
+
       <div className={styles.cardBody}>
         <span
           className={styles.typeBadge}
           style={{ background: typeStyle.bg, color: typeStyle.color }}
         >
-          {spot.parkingType}
+          {listing.type}
         </span>
-        <h3 className={styles.cardTitle}>{spot.title}</h3>
-        {spot.distance !== null && (
-          <p className={styles.cardDistance}>📍 {spot.distance.toFixed(2)} miles away</p>
-        )}
-        <div className={styles.cardTags}>
-          {spot.covered && <span className={styles.tag}>✓ Covered</span>}
-          {spot.evCharging && <span className={styles.tag}>⚡ EV Charging</span>}
-        </div>
+
+        <h3 className={styles.cardTitle}>{listing.title}</h3>
+        <p className={styles.cardAddress}>📍 {listing.address}</p>
+
         <div className={styles.cardFooter}>
           <span className={styles.cardPrice}>
-            <strong>${spot.price}</strong>/hr
+            <strong>${listing.price}</strong>/hr
           </span>
-          <button className={styles.bookBtn}>Book now</button>
+          {listing.available ? (
+            <button className={styles.bookBtn}>Book now</button>
+          ) : (
+            <button className={styles.bookBtn} disabled>Unavailable</button>
+          )}
         </div>
       </div>
     </div>
