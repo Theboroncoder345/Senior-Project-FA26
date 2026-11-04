@@ -1,0 +1,422 @@
+:root {
+  --blue-50:  #eff8ff;
+  --blue-100: #dbeffe;
+  --blue-500: #2f9cf5;
+  --blue-600: #1a7fd4;
+  --white:    #ffffff;
+  --gray-50:  #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-400: #94a3b8;
+  --gray-600: #475569;
+  --gray-800: #1e293b;
+}
+
+.page {
+  min-height: 100vh;
+  background: var(--gray-50);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 4rem;
+}
+
+/* Back button */
+.back {
+  background: none;
+  border: none;
+  color: var(--blue-600);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.25rem;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.back:hover { opacity: 0.7; }
+
+/* Title row */
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+}
+.badgeRow {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.typeBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+}
+.unavailableBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #ef4444;
+}
+.title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--gray-800);
+  margin: 0 0 0.3rem;
+  letter-spacing: -0.4px;
+}
+.address {
+  font-size: 0.9rem;
+  color: var(--gray-400);
+  margin: 0;
+}
+.priceTag {
+  text-align: right;
+  flex-shrink: 0;
+}
+.priceAmount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--blue-600);
+}
+.priceUnit {
+  font-size: 1rem;
+  color: var(--gray-400);
+  font-weight: 500;
+}
+
+/* ─── Photo gallery ────────────────────────────────────────── */
+.gallery {
+  margin-bottom: 2rem;
+}
+
+.mainPhoto {
+  position: relative;
+  width: 100%;
+  height: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px dashed var(--gray-200);
+  background: var(--gray-100);
+}
+
+.photoPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.photoPlaceholderIcon { font-size: 2.5rem; opacity: 0.4; }
+.photoPlaceholderText {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-400);
+  margin: 0;
+}
+
+.photoOverlayBadge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: rgba(0,0,0,0.55);
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+}
+
+/* Two-column layout */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 2rem;
+  align-items: start;
+}
+
+/* ─── Left column ──────────────────────────────────────────── */
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* Map placeholder */
+.mapPlaceholder {
+  width: 100%;
+  height: 320px;
+  background: linear-gradient(135deg, var(--blue-50), var(--blue-100));
+  border-radius: 16px;
+  border: 2px dashed var(--blue-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.mapInner {
+  text-align: center;
+  padding: 1.5rem;
+}
+.mapIcon { font-size: 3rem; display: block; margin-bottom: 0.6rem; }
+.mapLabel {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--blue-600);
+  margin: 0 0 0.3rem;
+}
+.mapCoords {
+  font-size: 0.8rem;
+  color: var(--blue-500);
+  font-family: monospace;
+  background: var(--blue-100);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 0.6rem;
+}
+.mapNote {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  margin: 0;
+}
+
+/* Sections */
+.section {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 1px solid var(--gray-200);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+.sectionTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--gray-800);
+  margin: 0 0 0.85rem;
+  letter-spacing: -0.2px;
+}
+.description {
+  font-size: 0.92rem;
+  color: var(--gray-600);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* Amenities */
+.amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.amenity {
+  background: var(--blue-50);
+  color: var(--blue-600);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--blue-100);
+}
+
+/* Host card */
+.hostCard {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.hostAvatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+  color: var(--white);
+  font-size: 1rem;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.hostName {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 0.15rem;
+}
+.hostJoined {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  margin: 0;
+}
+
+/* ─── Right column — booking card ──────────────────────────── */
+.right {
+  position: sticky;
+  top: 80px;
+}
+.bookingCard {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 1.75rem;
+  border: 1px solid var(--gray-200);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+.bookingTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gray-800);
+  margin: 0 0 0.3rem;
+}
+.bookingPrice {
+  font-size: 0.95rem;
+  color: var(--gray-400);
+  margin: 0 0 1.25rem;
+}
+.bookingPrice strong {
+  font-size: 1.3rem;
+  color: var(--blue-600);
+}
+
+/* Booking form */
+.bookingForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+.input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: var(--gray-800);
+  background: var(--white);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+.input:focus {
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 3px var(--blue-100);
+}
+
+/* Total */
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--gray-200);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+.totalAmount {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--blue-600);
+}
+
+/* Book button */
+.submitBtn {
+  width: 100%;
+  padding: 0.85rem;
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+  color: var(--white);
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  box-shadow: 0 4px 14px rgba(30,130,220,0.35);
+  font-family: inherit;
+}
+.submitBtn:hover { opacity: 0.9; }
+.submitBtn:active { transform: scale(0.98); }
+
+.bookingNote {
+  font-size: 0.75rem;
+  color: var(--gray-400);
+  text-align: center;
+  margin: 0;
+}
+
+/* Unavailable message */
+.unavailableMsg {
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+/* Success state */
+.successState {
+  text-align: center;
+  padding: 0.5rem 0;
+}
+.successIcon { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
+.successTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gray-800);
+  margin: 0 0 0.4rem;
+}
+.successSub {
+  font-size: 0.85rem;
+  color: var(--gray-400);
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+
+/* Not found */
+.notFound {
+  text-align: center;
+  padding: 5rem 1rem;
+}
+.notFoundIcon { font-size: 3rem; margin-bottom: 1rem; }
+.backBtn {
+  margin-top: 1rem;
+  background: var(--blue-600);
+  color: var(--white);
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ─── Responsive ───────────────────────────────────────────── */
+@media (max-width: 800px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .right {
+    position: static;
+  }
+  .title { font-size: 1.4rem; }
+  .mainPhoto { height: 220px; }
+}

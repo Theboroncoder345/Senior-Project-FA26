@@ -1,0 +1,297 @@
+:root {
+  --blue-50:  #eff8ff;
+  --blue-100: #dbeffe;
+  --blue-500: #2f9cf5;
+  --blue-600: #1a7fd4;
+  --white:    #ffffff;
+  --gray-50:  #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-400: #94a3b8;
+  --gray-600: #475569;
+  --gray-800: #1e293b;
+}
+
+.page {
+  min-height: 100vh;
+  background: var(--gray-50);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ─── Hero ─────────────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-500) 100%);
+  padding: 3.5rem 1.5rem;
+}
+.heroInner {
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+}
+.heroTitle {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--white);
+  margin: 0 0 0.6rem;
+  letter-spacing: -0.5px;
+}
+.heroSub {
+  color: var(--blue-100);
+  font-size: 1rem;
+  margin: 0 0 1.75rem;
+}
+
+/* Search bar */
+.searchBar {
+  display: flex;
+  align-items: center;
+  background: var(--white);
+  border-radius: 14px;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  gap: 0.5rem;
+}
+.searchIcon { font-size: 1rem; color: var(--gray-400); flex-shrink: 0; }
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  color: var(--gray-800);
+  background: transparent;
+  font-family: inherit;
+}
+.searchInput::placeholder { color: var(--gray-400); }
+.searchBtn {
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+  color: var(--white);
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+.searchBtn:hover { opacity: 0.9; }
+
+/* ─── Main content ─────────────────────────────────────────── */
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+/* CTA Banner */
+.ctaBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--white);
+  border: 1.5px solid var(--blue-100);
+  border-radius: 16px;
+  padding: 1.1rem 1.5rem;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  box-shadow: 0 2px 12px rgba(30,130,220,0.07);
+}
+.ctaText {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.ctaEmoji { font-size: 1.8rem; }
+.ctaTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0;
+}
+.ctaSub {
+  font-size: 0.82rem;
+  color: var(--gray-400);
+  margin: 0.1rem 0 0;
+}
+.ctaBtn {
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+  color: var(--white);
+  text-decoration: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+  box-shadow: 0 3px 10px rgba(30,130,220,0.3);
+}
+.ctaBtn:hover { opacity: 0.9; }
+
+/* Section header */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.sectionTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--gray-800);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+/* Filter pills */
+.filters {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.filterBtn {
+  padding: 0.4rem 0.9rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--gray-600);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.filterBtn:hover {
+  border-color: var(--blue-400);
+  color: var(--blue-600);
+  background: var(--blue-50);
+}
+.filterBtnActive {
+  background: var(--blue-600) !important;
+  border-color: var(--blue-600) !important;
+  color: var(--white) !important;
+}
+
+/* ─── Listings grid ────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+/* Card */
+.card {
+  background: var(--white);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid var(--gray-200);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.1);
+}
+.cardUnavailable { opacity: 0.6; }
+
+/* Card image */
+.cardImage {
+  height: 150px;
+  background: linear-gradient(135deg, var(--blue-100), var(--blue-50));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.cardImageIcon { font-size: 3rem; opacity: 0.4; }
+.unavailableBadge {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  background: rgba(0,0,0,0.55);
+  color: var(--white);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* Card body */
+.cardBody {
+  padding: 1rem;
+}
+.typeBadge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.3px;
+}
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 0.3rem;
+}
+.cardAddress {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  margin: 0 0 0.85rem;
+}
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cardPrice {
+  font-size: 0.95rem;
+  color: var(--gray-800);
+}
+.cardPrice strong {
+  font-size: 1.1rem;
+  color: var(--blue-600);
+}
+.bookBtn {
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+.bookBtn:hover:not(:disabled) { opacity: 0.88; }
+.bookBtn:disabled {
+  background: var(--gray-200);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+.emptyIcon { font-size: 3rem; margin-bottom: 0.75rem; }
+.emptyTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 0.35rem;
+}
+.emptySub { font-size: 0.9rem; color: var(--gray-400); margin: 0; }
+
+/* ─── Responsive ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .heroTitle { font-size: 1.6rem; }
+  .ctaBanner { flex-direction: column; align-items: flex-start; }
+  .sectionHeader { flex-direction: column; align-items: flex-start; }
+}

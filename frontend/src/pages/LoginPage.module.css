@@ -245,6 +245,16 @@
 }
 
 /* ─── Submit button ────────────────────────────────────────── */
+.errorMsg {
+  font-size: 0.85rem;
+  color: #ef4444;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  margin: 0;
+}
+
 .submitBtn {
   margin-top: 0.5rem;
   width: 100%;

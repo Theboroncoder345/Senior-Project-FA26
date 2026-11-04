@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import styles from './LoginPage.module.css'
 
-export default function LoginPage({ onLoginSuccess, initialError = '' }) {
+export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState(initialError)
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -45,7 +47,7 @@ export default function LoginPage({ onLoginSuccess, initialError = '' }) {
         return
       }
 
-      onLoginSuccess()
+      navigate('/home')
     } catch {
       setError('Unable to connect to the server. Please try again.')
     } finally {
@@ -125,7 +127,7 @@ export default function LoginPage({ onLoginSuccess, initialError = '' }) {
               </div>
             </div>
 
-            {error && <p role="alert">{error}</p>}
+            {error && <p className={styles.errorMsg} role="alert">{error}</p>}
 
             <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
               {isSubmitting ? 'Signing in…' : 'Sign in'}
@@ -148,7 +150,7 @@ export default function LoginPage({ onLoginSuccess, initialError = '' }) {
 
           <p className={styles.signupPrompt}>
             Don't have an account?{' '}
-            <a href="#" className={styles.signupLink}>Sign up free</a>
+            <Link to="/signup" className={styles.signupLink}>Sign up free</Link>
           </p>
         </div>
       </div>

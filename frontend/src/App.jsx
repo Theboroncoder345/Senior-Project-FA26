@@ -1,19 +1,19 @@
-import { useCallback, useState } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
-import ProtectedPage from './pages/ProtectedPage'
+import SignupPage from './pages/SignupPage'
+import HomePage from './pages/HomePage'
+import ListingPage from './pages/ListingPage'
 
 function App() {
-  const [showProtectedPage, setShowProtectedPage] = useState(true)
-  const [loginMessage, setLoginMessage] = useState('')
-  const showLogin = useCallback((message = '') => {
-    setLoginMessage(message)
-    setShowProtectedPage(false)
-  }, [])
-  const showAccount = useCallback(() => setShowProtectedPage(true), [])
-
-  return showProtectedPage
-    ? <ProtectedPage onSignOut={showLogin} />
-    : <LoginPage onLoginSuccess={showAccount} initialError={loginMessage} />
+  return (
+    <Routes>
+      <Route path="/login"       element={<LoginPage />} />
+      <Route path="/signup"      element={<SignupPage />} />
+      <Route path="/home"        element={<HomePage />} />
+      <Route path="/listing/:id" element={<ListingPage />} />
+      <Route path="*"            element={<Navigate to="/login" replace />} />
+    </Routes>
+  )
 }
 
 export default App
