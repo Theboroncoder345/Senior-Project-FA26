@@ -19,7 +19,7 @@ export default function DestinationSearch({ onSelect }) {
 
     const controller = new AbortController();
 
-    const timer = setTimeout(async () => {
+    const timeout = setTimeout(async () => {
       try {
         setLoading(true);
 
@@ -54,7 +54,7 @@ export default function DestinationSearch({ onSelect }) {
     }, 500);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(timeout);
       controller.abort();
     };
   }, [query, sessionToken]);
