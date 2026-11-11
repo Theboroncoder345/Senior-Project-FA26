@@ -16,6 +16,7 @@ export default function ParkingMap({ destination, parkingSpots }) {
     if (!mapContainer.current || mapInstance.current) return;
 
     const map = new mapboxgl.Map({
+      accessToken: import.meta.env.VITE_MAPBOX_TOKEN,
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
       center: [-74.0745, 40.8135],
