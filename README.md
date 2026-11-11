@@ -12,6 +12,7 @@ Senior-Project-FA26/
 ├── backend/
 │   ├── __init__.py
 │   ├── main.py                  # FastAPI application and CORS
+│   ├── db/                      # Explicit PostgreSQL config, sessions, field mappings
 │   ├── models/                  # Request/response models and validation
 │   ├── routers/                 # Auth, users, parking spots, reservations
 │   ├── tests/                   # pytest/TestClient tests
@@ -22,6 +23,8 @@ Senior-Project-FA26/
 │   ├── requirements-dev.txt     # Runtime and test dependencies
 │   ├── pytest.ini
 │   └── AUTHENTICATION.md
+├── database/                   # PostgreSQL bootstrap schema, optional demo seed, setup notes
+├── .env.example                # Placeholder DATABASE_URL; no real credentials
 ├── frontend/                   # Existing React/Vite project
 ├── .gitignore
 └── README.md
@@ -78,7 +81,8 @@ python -m pytest -c backend/pytest.ini -q
 Tests isolate in-memory records and sessions. If you are already inside
 `backend/`, `python -m pytest -q` also works with the same activated environment.
 Python imports use the `backend` package, so the old root-level `main:app` command
-has been replaced by `backend.main:app`.
+has been replaced by `backend.main:app`. The obsolete root `main.py` was removed
+to prevent accidentally launching a different backend.
 
 ## Frontend setup
 
@@ -123,7 +127,10 @@ Use FastAPI's `/docs` page for the complete endpoint schemas.
 - Do not commit virtual environments, `node_modules`, build output, Python/test
   caches, `.DS_Store`, or `.env` files. The root `.gitignore` covers these items;
   install dependencies locally after cloning.
-- PostgreSQL integration still needs migrations, constraints, and transactional
-  booking protection. No database connection or `.env` file is required today.
+- PostgreSQL schema constraints, safe non-login seed data, connection/session
+  factories, and explicit API field mappings are prepared. Routes still use memory;
+  setting `DATABASE_URL` does not enable persistence. No database is needed for
+  current API usage or tests. See [database/README.md](database/README.md) for setup,
+  the complete schema change rationale, migration cautions, and remaining work.
 - Review the security limitations in the authentication guide before public
   deployment; adding PostgreSQL alone will not address them.

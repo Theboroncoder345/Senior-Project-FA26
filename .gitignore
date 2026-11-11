@@ -33,3 +33,6 @@ frontend/dist-ssr/
 .vscode/
 *.swp
 *.swo
+
+# Share placeholders, never local credentials
+!.env.example
