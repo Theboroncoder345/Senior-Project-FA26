@@ -100,6 +100,22 @@ const TYPE_COLORS = {
 
 const MOCK_USER = { firstName: 'Christopher', lastName: 'M', email: 'chris@example.com' }
 
+// Generate time options in 15-minute increments (12:00 AM → 11:45 PM)
+function generateTimeSlots() {
+  const slots = []
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const hour12 = h % 12 || 12
+      const ampm   = h < 12 ? 'AM' : 'PM'
+      const label  = `${hour12}:${String(m).padStart(2, '0')} ${ampm}`
+      const value  = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      slots.push({ label, value })
+    }
+  }
+  return slots
+}
+const TIME_SLOTS = generateTimeSlots()
+
 export default function ListingPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -107,6 +123,7 @@ export default function ListingPage() {
 
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
   const [hours, setHours] = useState(1)
   const [booked, setBooked] = useState(false)
 
@@ -267,29 +284,54 @@ export default function ListingPage() {
                       </div>
                       <div className={styles.field}>
                         <label className={styles.label}>Start time</label>
-                        <input
-                          type="time"
-                          className={styles.input}
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className={styles.field}>
-                        <label className={styles.label}>Duration (hours)</label>
                         <select
                           className={styles.input}
-                          value={hours}
-                          onChange={(e) => setHours(Number(e.target.value))}
+                          value={startTime}
+                          onChange={(e) => { setStartTime(e.target.value); setEndTime(''); setHours(1) }}
+                          required
                         >
-                          {[1, 2, 3, 4, 5, 6, 8, 10, 12].map((h) => (
-                            <option key={h} value={h}>{h} hr{h > 1 ? 's' : ''}</option>
+                          <option value="">Select a time…</option>
+                          {TIME_SLOTS.map((slot) => (
+                            <option key={slot.value} value={slot.value}>
+                              {slot.label}
+                            </option>
                           ))}
+                        </select>
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.label}>End time</label>
+                        <select
+                          className={styles.input}
+                          value={endTime}
+                          onChange={(e) => {
+                            const selected = e.target.value
+                            setEndTime(selected)
+                            if (startTime && selected) {
+                              const [sh, sm] = startTime.split(':').map(Number)
+                              const [eh, em] = selected.split(':').map(Number)
+                              const diff = (eh * 60 + em) - (sh * 60 + sm)
+                              setHours(diff / 60)
+                            }
+                          }}
+                          disabled={!startTime}
+                        >
+                          <option value="">Select end time…</option>
+                          {TIME_SLOTS.filter((slot) => slot.value > startTime).map((slot) => {
+                            const [sh, sm] = startTime.split(':').map(Number)
+                            const [eh, em] = slot.value.split(':').map(Number)
+                            const diff = (eh * 60 + em) - (sh * 60 + sm)
+                            const hrs = diff / 60
+                            return (
+                              <option key={slot.value} value={slot.value}>
+                                {slot.label} · {hrs} hr{hrs !== 1 ? 's' : ''}
+                              </option>
+                            )
+                          })}
                         </select>
                       </div>
 
                       <div className={styles.totalRow}>
-                        <span>Total</span>
+                        <span>Total {hours > 0 ? `(${hours} hr${hours !== 1 ? 's' : ''})` : ''}</span>
                         <span className={styles.totalAmount}>${total}</span>
                       </div>
 

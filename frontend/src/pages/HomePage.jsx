@@ -3,6 +3,22 @@ import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import styles from './HomePage.module.css'
 
+// 15-minute time slots
+function generateTimeSlots() {
+  const slots = []
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const hour12 = h % 12 || 12
+      const ampm   = h < 12 ? 'AM' : 'PM'
+      const label  = `${hour12}:${String(m).padStart(2, '0')} ${ampm}`
+      const value  = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      slots.push({ label, value })
+    }
+  }
+  return slots
+}
+const TIME_SLOTS = generateTimeSlots()
+
 const MOCK_LISTINGS = [
   {
     id: 1,
@@ -66,6 +82,20 @@ const MOCK_USER = { firstName: 'Christopher', lastName: 'M', email: 'chris@examp
 export default function HomePage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
+  const [date, setDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [searchError, setSearchError] = useState('')
+
+
+  const handleSearch = () => {
+    if (!search.trim()) {
+      setSearchError('Please enter a location to search.')
+      return
+    }
+    setSearchError('')
+    // TODO: pass search, date, startTime, endTime to backend API
+  }
 
   const types = ['All', 'Driveway', 'Covered', 'Lot', 'Garage']
 
@@ -85,17 +115,78 @@ export default function HomePage() {
       <section className={styles.hero}>
         <div className={styles.heroInner}>
           <h1 className={styles.heroTitle}>Find parking near you</h1>
-          <p className={styles.heroSub}>Search driveways, lots, and garages available to book right now</p>
-          <div className={styles.searchBar}>
-            <span className={styles.searchIcon}>🔍</span>
-            <input
-              type="text"
-              placeholder="Search by address or neighborhood…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={styles.searchInput}
-            />
-            <button className={styles.searchBtn}>Search</button>
+          <p className={styles.heroSub}>Search by location and date to see what's available</p>
+
+          <div className={styles.searchCard}>
+            {/* Row 1 — location */}
+            <div className={styles.searchRow}>
+              <div className={styles.searchField}>
+                <label className={styles.searchLabel}>📍 Location</label>
+                <input
+                  type="text"
+                  placeholder="Address or neighborhood…"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setSearchError('') }}
+                  className={styles.searchInput}
+                />
+              </div>
+            </div>
+
+            {/* Row 2 — date + times */}
+            <div className={styles.searchRow}>
+              <div className={styles.searchField}>
+                <label className={styles.searchLabel}>📅 Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={styles.searchInput}
+                />
+              </div>
+              <div className={styles.searchDivider} />
+              <div className={styles.searchField}>
+                <label className={styles.searchLabel}>🕐 Start time</label>
+                <select
+                  value={startTime}
+                  onChange={(e) => { setStartTime(e.target.value); setEndTime('') }}
+                  className={styles.searchInput}
+                >
+                  <option value="">Any time</option>
+                  {TIME_SLOTS.map((slot) => (
+                    <option key={slot.value} value={slot.value}>{slot.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.searchDivider} />
+              <div className={styles.searchField}>
+                <label className={styles.searchLabel}>🕔 End time</label>
+                <select
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className={styles.searchInput}
+                  disabled={!startTime}
+                >
+                  <option value="">Any time</option>
+                  {TIME_SLOTS.filter((slot) => slot.value > startTime).map((slot) => {
+                    const [sh, sm] = startTime.split(':').map(Number)
+                    const [eh, em] = slot.value.split(':').map(Number)
+                    const hrs = ((eh * 60 + em) - (sh * 60 + sm)) / 60
+                    return (
+                      <option key={slot.value} value={slot.value}>
+                        {slot.label} · {hrs} hr{hrs !== 1 ? 's' : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+            </div>
+
+            {searchError && (
+              <p className={styles.searchError}>{searchError}</p>
+            )}
+            <button className={styles.searchBtn} onClick={handleSearch}>
+              Search available spots
+            </button>
           </div>
         </div>
       </section>
