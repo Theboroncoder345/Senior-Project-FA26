@@ -1,6 +1,4 @@
-import { DEFAULT_PARKING_FILTERS } from './parkingApi'
-
-export default function ParkingFilters({ filters, setFilters, hasDestination, inputClassName }) {
+export default function ParkingFilters({ filters, setFilters, hasDestination, onReset, inputClassName }) {
   function update(name, value) {
     setFilters(previous => ({ ...previous, [name]: value }))
   }
@@ -27,7 +25,7 @@ export default function ParkingFilters({ filters, setFilters, hasDestination, in
         <option value="price">Lowest price first</option>
         {hasDestination && <option value="distance">Closest first</option>}
       </select>
-      <button type="button" className={inputClassName} onClick={() => setFilters(DEFAULT_PARKING_FILTERS)}>
+      <button type="button" className={inputClassName} onClick={onReset}>
         Clear filters
       </button>
     </>

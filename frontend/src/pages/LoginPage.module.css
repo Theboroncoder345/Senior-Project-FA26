@@ -193,16 +193,6 @@
   color: var(--gray-800);
 }
 
-.forgotLink {
-  font-size: 0.8rem;
-  color: var(--blue-600);
-  text-decoration: none;
-  font-weight: 500;
-}
-.forgotLink:hover {
-  text-decoration: underline;
-}
-
 .input {
   width: 100%;
   padding: 0.7rem 0.9rem;
@@ -277,45 +267,6 @@
   transform: scale(0.98);
 }
 
-/* ─── Divider ──────────────────────────────────────────────── */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--gray-400);
-  font-size: 0.8rem;
-  margin: 1.25rem 0;
-}
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--gray-200);
-}
-
-/* ─── Google button ────────────────────────────────────────── */
-.googleBtn {
-  width: 100%;
-  padding: 0.75rem;
-  background: var(--white);
-  color: var(--gray-800);
-  border: 1.5px solid var(--gray-200);
-  border-radius: 10px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  transition: background 0.2s, border-color 0.2s;
-}
-.googleBtn:hover {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
-}
-
 /* ─── Sign up prompt ───────────────────────────────────────── */
 .signupPrompt {
   text-align: center;
@@ -331,25 +282,6 @@
 }
 .signupLink:hover {
   text-decoration: underline;
-}
-
-.devBypass {
-  display: block;
-  width: 100%;
-  margin-top: 0.75rem;
-  padding: 0.6rem;
-  background: none;
-  border: 1.5px dashed #f59e0b;
-  border-radius: 8px;
-  color: #b45309;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s;
-}
-.devBypass:hover {
-  background: #fffbeb;
 }
 
 /* ─── Responsive ───────────────────────────────────────────── */

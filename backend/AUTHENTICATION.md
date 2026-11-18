@@ -202,7 +202,7 @@ and allows the `Authorization` header.
 - Demo owners and accounts created through legacy `POST /users` have no passwords
   and cannot log in. They cannot be claimed through registration. A credential
   migration/reset flow is still needed.
-- Legacy `GET /users` remains public for compatibility and exposes names/emails.
+- Legacy `GET /users` returns IDs, display names, and host roles. Email and account creation time are available through the authenticated profile.
   Define user-directory permissions or remove public email exposure before deployment.
 - Registration lets users opt into the owner role; there is no owner verification
   or administrative approval flow.
@@ -212,3 +212,8 @@ and allows the `Authorization` header.
 - Before public deployment, add HTTPS, abuse protection, production configuration,
   and a review of client-side token storage/XSS exposure. These concerns are not
   solved by replacing the in-memory lists with PostgreSQL.
+
+`POST /auth/become-host` enables hosting for the authenticated account. Listing
+owners can pause or unpause their own spots using
+`PATCH /parking-spots/{spot_id}/availability` with `{"available": false}` or
+`{"available": true}`. Pausing leaves reservations in place.

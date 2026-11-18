@@ -9,7 +9,7 @@ from backend.db.config import DatabaseSettings
 
 def create_database_engine(settings: DatabaseSettings | None = None):
     settings = settings or DatabaseSettings.from_env()
-    return create_engine(settings.url, pool_pre_ping=True,
+    return create_engine(settings.url, pool_pre_ping=True, hide_parameters=True,
                          connect_args={"connect_timeout": 5, "options": "-c timezone=UTC"})
 
 

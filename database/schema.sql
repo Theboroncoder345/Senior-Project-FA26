@@ -31,6 +31,9 @@ CREATE TABLE public.parking_spots
     price_per_hour double precision NOT NULL,
     description text NOT NULL,
     is_available boolean NOT NULL DEFAULT true,
+    title text,
+    parking_type text,
+    photo_urls text[] NOT NULL DEFAULT '{}',
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT parking_price_nonnegative CHECK (price_per_hour >= 0 AND price_per_hour < 'Infinity'::double precision),
     CONSTRAINT parking_address_not_blank CHECK (length(trim(address)) > 0),
@@ -70,5 +73,9 @@ CREATE TABLE public.reservations
 
 TABLESPACE pg_default;
 
+
+CREATE INDEX IF NOT EXISTS parking_spots_owner_idx ON public.parking_spots (owner_id);
+CREATE INDEX IF NOT EXISTS reservations_user_idx ON public.reservations (user_id);
+CREATE INDEX IF NOT EXISTS reservations_spot_time_idx ON public.reservations (spot_id, end_time, start_time);
 
 COMMIT;

@@ -19,17 +19,25 @@ class MemoryRepository:
         with self.lock:
             yield self
 
-    def list(self, table, *, min_price=None, max_price=None, **filters):
+    def list(self, table, *, min_price=None, max_price=None, window=None, **filters):
         return [
             row.copy() for row in self.rows[table].values()
             if all(row[key] == value for key, value in filters.items())
             and (min_price is None or row["price"] >= min_price)
             and (max_price is None or row["price"] <= max_price)
+            and (window is None or not any(
+                existing["spot_id"] == row["id"]
+                and window[0] < existing["end_time"] and window[1] > existing["start_time"]
+                for existing in self.rows["reservations"].values()
+            ))
         ]
 
     def get(self, table, record_id, *, lock=False):
         row = self.rows[table].get(record_id)
-        return row.copy() if row is not None else None
+        if row is None:
+            return None
+        return {key: value for key, value in row.items()
+                if key not in {"title", "parking_type", "photo_urls"} or value}
 
     def credentials(self, email):
         for row in self.rows["users"].values():
@@ -49,7 +57,7 @@ class MemoryRepository:
         if table == "reservations":
             row["total_cost"] = total_cost
         if table == "parking_spots":
-            row = {key: value for key, value in row.items() if value is not None}
+            row = {key: value for key, value in row.items() if value is not None or key not in {"latitude", "longitude"}}
         self.rows[table][record_id] = row
         if password_hash is not None:
             self.password_hashes[record_id] = password_hash

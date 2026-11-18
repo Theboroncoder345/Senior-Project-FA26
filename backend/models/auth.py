@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field, SecretStr, field_validator
 
 from backend.models.users import User
@@ -27,6 +29,7 @@ class LoginRequest(BaseModel):
 
 class PublicUser(User):
     id: int
+    created_at: datetime | None = None
 
 
 class LoginResponse(BaseModel):

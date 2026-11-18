@@ -23,7 +23,7 @@ def invalid_credentials():
     )
 
 
-@router.post("/register", status_code=201, response_model=PublicUser)
+@router.post("/register", status_code=201, response_model=PublicUser, response_model_exclude_none=True)
 def register(payload: RegistrationRequest, repository: Repository):
     password_hash = security.hash_password(payload.password.get_secret_value())
     with repository.transaction() as records:
@@ -32,7 +32,7 @@ def register(payload: RegistrationRequest, repository: Repository):
         )
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse, response_model_exclude_none=True)
 def login(payload: LoginRequest, response: Response, repository: Repository):
     with repository.transaction() as records:
         user, password_hash = records.credentials(payload.email)
@@ -55,7 +55,7 @@ def login(payload: LoginRequest, response: Response, repository: Repository):
     }
 
 
-@router.get("/me", response_model=PublicUser)
+@router.get("/me", response_model=PublicUser, response_model_exclude_none=True)
 def current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
     repository: Repository,
@@ -80,3 +80,9 @@ def current_user(
     if user is None:
         raise unauthorized
     return user
+
+
+@router.post("/become-host", response_model=PublicUser, response_model_exclude_none=True)
+def become_host(user: Annotated[dict, Depends(current_user)], repository: Repository):
+    with repository.transaction() as records:
+        return records.update("users", user["id"], {"is_owner": True})

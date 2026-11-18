@@ -10,6 +10,7 @@ export default function SignupPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    isOwner: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState({})
@@ -47,6 +48,7 @@ export default function SignupPage() {
           name: [form.firstName.trim(), form.lastName.trim()].join(' '),
           email: form.email.trim(),
           password: form.password,
+          is_owner: form.isOwner,
         },
       })
       navigate('/login', { replace: true, state: { registrationMessage: 'Account created. Sign in to continue.' } })
@@ -165,6 +167,12 @@ export default function SignupPage() {
               />
               {errors.confirmPassword && <span className={styles.error}>{errors.confirmPassword}</span>}
             </div>
+
+            <label>
+              <input type="checkbox" checked={form.isOwner}
+                onChange={event => setForm({ ...form, isOwner: event.target.checked })} />
+              {' '}I want to list parking
+            </label>
 
             <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
               {isSubmitting ? 'Creating account…' : 'Create account'}

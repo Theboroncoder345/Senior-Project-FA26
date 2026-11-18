@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import { photoUrls } from '../parkingApi'
 import { apiRequest } from '../api/client'
 import { useApiResource, useSignOut } from '../api/useApiResource'
 import styles from './HostDashboardPage.module.css'
@@ -24,13 +25,29 @@ export default function HostDashboardPage() {
   const bookings = reservations.data ?? []
   const addresses = new Map(spots.map(spot => [spot.id, spot.address]))
 
+  async function becomeHost() {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      await apiRequest('/auth/become-host', { method: 'POST' })
+      account.reload()
+    } catch (requestError) {
+      if (requestError.status === 401) signOut(requestError.message)
+      else setError(requestError.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function changeListing(spot, method, body) {
     if (busy) return
     setBusy(true)
     setError('')
     setMessage('')
     try {
-      await apiRequest(`/parking-spots/${spot.id}`, { method, body })
+      const suffix = method === 'PATCH' ? '/availability' : ''
+      await apiRequest(`/parking-spots/${spot.id}${suffix}`, { method, body })
       setEditing(null)
       listings.reload()
       setMessage(method === 'DELETE' ? 'Listing deleted.' : 'Listing updated.')
@@ -44,7 +61,7 @@ export default function HostDashboardPage() {
 
   return (
     <div className={styles.page}>
-      <Navbar />
+      <Navbar accountResource={account} />
       <main className={styles.main}>
         <div className={styles.header}>
           <div>
@@ -59,7 +76,13 @@ export default function HostDashboardPage() {
 
         {account.loading && <p role="status">Loading your account…</p>}
         {account.error && <p role="alert">{account.error.message}</p>}
-        {account.data && !owner && <p role="status">A host account is required to manage parking listings.</p>}
+        {account.data && !owner && (
+          <div>
+            <p>Become a host to list and manage parking spaces with your account.</p>
+            {error && <p role="alert">{error}</p>}
+            <button type="button" className={styles.addBtn} disabled={busy} onClick={becomeHost}>Become a host</button>
+          </div>
+        )}
 
         {owner && (
           <>
@@ -100,7 +123,7 @@ export default function HostDashboardPage() {
                             onSave={body => changeListing(spot, 'PUT', body)} />
                         ) : (
                           <>
-                            <Link className={styles.listingTitle} to={`/listing/${spot.id}`}>{spot.address}</Link>
+                            <Link className={styles.listingTitle} to={`/listing/${spot.id}`}>{spot.title || spot.address}</Link>
                             <p className={styles.listingAddress}>{spot.description}</p>
                             <div className={styles.listingRight}>
                               <span className={styles.activeStatus}>{spot.available ? '● Active' : '○ Paused'}</span>
@@ -109,6 +132,10 @@ export default function HostDashboardPage() {
                             <div className={styles.requestActions}>
                               <button type="button" className={styles.switchBtn} disabled={busy}
                                 onClick={() => { setError(''); setEditing(spot.id) }}>Edit</button>
+                              <button type="button" className={styles.switchBtn} disabled={busy}
+                                onClick={() => changeListing(spot, 'PATCH', { available: !spot.available })}>
+                                {spot.available ? 'Pause' : 'Unpause'}
+                              </button>
                               <button type="button" className={styles.declineBtn} disabled={busy}
                                 onClick={() => {
                                   if (window.confirm(`Delete the listing at ${spot.address}?`)) changeListing(spot, 'DELETE')
@@ -164,9 +191,18 @@ function ReservationCard({ booking, address }) {
 }
 
 function ListingEditor({ spot, busy, onSave, onCancel }) {
+  const [locationError, setLocationError] = useState('')
+
   function submit(event) {
     event.preventDefault()
     const fields = new FormData(event.currentTarget)
+    const latitude = fields.get('latitude')
+    const longitude = fields.get('longitude')
+    if (Boolean(latitude) !== Boolean(longitude)) {
+      setLocationError('Enter both latitude and longitude, or clear both.')
+      return
+    }
+    setLocationError('')
     const address = fields.get('address').trim()
     onSave({
       address,
@@ -174,7 +210,11 @@ function ListingEditor({ spot, busy, onSave, onCancel }) {
       price: Number(fields.get('price')),
       available: fields.has('available'),
       owner_id: spot.owner_id,
-      ...(address !== spot.address ? { latitude: null, longitude: null } : {}),
+      latitude: latitude ? Number(latitude) : null,
+      longitude: longitude ? Number(longitude) : null,
+      title: fields.get('title').trim() || null,
+      parking_type: fields.get('parking-type').trim() || null,
+      photo_urls: photoUrls(fields.get('photos')),
     })
   }
 
@@ -184,7 +224,14 @@ function ListingEditor({ spot, busy, onSave, onCancel }) {
       <label>Hourly price <input name="price" type="number" min="0" step="any" defaultValue={spot.price} required /></label>
       <label>Description <textarea name="description" defaultValue={spot.description} required /></label>
       <label><input name="available" type="checkbox" defaultChecked={spot.available} /> Active</label>
-      {spot.latitude != null && spot.longitude != null && <p>Changing the address removes the existing map pin.</p>}
+      <label>Listing title <input name="title" maxLength={100} defaultValue={spot.title} /></label>
+      <label>Parking type <input name="parking-type" maxLength={60} defaultValue={spot.parking_type} /></label>
+      <label>Photo links (up to 5 HTTPS URLs, one per line)
+        <textarea name="photos" defaultValue={spot.photo_urls?.join('\n')} />
+      </label>
+      <label>Latitude <input name="latitude" type="number" min="-90" max="90" step="any" defaultValue={spot.latitude} /></label>
+      <label>Longitude <input name="longitude" type="number" min="-180" max="180" step="any" defaultValue={spot.longitude} /></label>
+      {locationError && <p role="alert">{locationError}</p>}
       <div className={styles.requestActions}>
         <button type="submit" className={styles.addBtn} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
         <button type="button" className={styles.switchBtn} onClick={onCancel} disabled={busy}>Cancel</button>

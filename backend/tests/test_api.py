@@ -6,7 +6,7 @@ def test_create_user(client):
     response = client.post('/users', json=payload)
     assert response.status_code == 200
     assert response.json() == {'id': 1, **payload}
-    assert client.get('/users').json() == [response.json()]
+    assert client.get('/users').json() == [{key: value for key, value in response.json().items() if key != 'email'}]
 
 
 def test_duplicate_email(client, create_user):
@@ -16,7 +16,7 @@ def test_duplicate_email(client, create_user):
     })
     assert response.status_code == 409
     assert response.json() == {'detail': 'Email already registered'}
-    assert client.get('/users').json() == [original]
+    assert client.get('/users').json() == [{key: value for key, value in original.items() if key != 'email'}]
 
 
 def test_owner_can_create_spot(client, create_user, create_spot):

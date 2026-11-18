@@ -30,7 +30,7 @@ def test_registration_hashes_password_without_exposing_it(client, registration, 
     assert response.status_code == 201
     expected = {'id': 1, 'name': 'Alice', 'email': 'alice@example.com', 'is_owner': False}
     assert response.json() == expected
-    assert client.get('/users').json() == [expected]
+    assert client.get('/users').json() == [{key: value for key, value in expected.items() if key != 'email'}]
     stored_hash = repository.password_hashes[1]
     assert stored_hash.startswith('$argon2id$')
     assert stored_hash != registration['password']
@@ -42,7 +42,7 @@ def test_registration_duplicate_email(client, registration, registered, email, r
     response = client.post('/auth/register', json=registration | {'email': email})
     assert response.status_code == 409
     assert response.json() == {'detail': 'Email already registered'}
-    assert client.get('/users').json() == [registered]
+    assert client.get('/users').json() == [{key: value for key, value in registered.items() if key != 'email'}]
     assert len(repository.password_hashes) == 1
     assert login(client, registration).status_code == 200
 
@@ -80,7 +80,7 @@ def test_legacy_user_cannot_login_or_be_overwritten(client, create_user, registr
     legacy = create_user(registration['email'])
     assert login(client, registration).status_code == 401
     assert client.post('/auth/register', json=registration).status_code == 409
-    assert client.get('/users').json() == [legacy]
+    assert client.get('/users').json() == [{key: value for key, value in legacy.items() if key != 'email'}]
     assert repository.password_hashes == {}
 
 

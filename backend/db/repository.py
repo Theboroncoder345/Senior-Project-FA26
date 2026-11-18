@@ -49,7 +49,7 @@ class Records:
     def _rows(self, sql, params):
         return self.session.execute(text(sql), params).mappings()
 
-    def list(self, table, *, min_price=None, max_price=None, **filters):
+    def list(self, table, *, min_price=None, max_price=None, window=None, **filters):
         params = to_database(table, filters)
         conditions = [f"{column} = :{column}" for column in params]
         if min_price is not None:
@@ -58,6 +58,13 @@ class Records:
         if max_price is not None:
             conditions.append("price_per_hour <= :max_price")
             params["max_price"] = max_price
+        if window is not None:
+            conditions.append("""NOT EXISTS (
+                SELECT 1 FROM reservations r
+                WHERE r.spot_id = parking_spots.spot_id
+                  AND :requested_start < r.end_time AND :requested_end > r.start_time
+            )""")
+            params["requested_start"], params["requested_end"] = window
         where = " AND ".join(conditions) or "TRUE"
         order = FIELDS[table]["id"]
         rows = self._rows(f"SELECT * FROM {table} WHERE {where} ORDER BY {order}", params)

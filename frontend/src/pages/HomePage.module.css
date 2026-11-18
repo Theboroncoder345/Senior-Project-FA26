@@ -238,7 +238,6 @@
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   border: 1px solid var(--gray-200);
   transition: transform 0.2s, box-shadow 0.2s;
-  cursor: pointer;
 }
 .card:hover {
   transform: translateY(-3px);
@@ -316,13 +315,9 @@
   cursor: pointer;
   transition: opacity 0.2s;
   font-family: inherit;
+  text-decoration: none;
 }
-.bookBtn:hover:not(:disabled) { opacity: 0.88; }
-.bookBtn:disabled {
-  background: var(--gray-200);
-  color: var(--gray-400);
-  cursor: not-allowed;
-}
+.bookBtn:hover { opacity: 0.88; }
 
 /* Empty state */
 .empty {

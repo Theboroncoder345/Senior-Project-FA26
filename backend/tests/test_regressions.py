@@ -10,7 +10,7 @@ def test_email_uniqueness_ignores_case_and_surrounding_whitespace(client, create
         'name': 'Duplicate', 'email': '  owner@example.COM  ', 'is_owner': False,
     })
     assert response.status_code == 409
-    assert client.get('/users').json() == [original]
+    assert client.get('/users').json() == [{key: value for key, value in original.items() if key != 'email'}]
 
 
 @pytest.mark.parametrize('changes', [

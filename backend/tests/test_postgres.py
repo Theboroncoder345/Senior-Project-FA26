@@ -182,3 +182,63 @@ def test_concurrent_bookings_and_rollback(client, booking, auth_headers):
     }).status_code == 200
     assert client.delete(f"/reservations/{first['id']}").status_code == 200
     assert client.post("/reservations", json=booking).status_code == 200
+
+
+@pytest.mark.parametrize("start,end,visible", [
+    ("07:00", "09:00", True),
+    ("10:00", "12:00", False),
+    ("09:00", "11:00", False),
+    ("11:00", "13:00", False),
+    ("10:30", "11:30", False),
+    ("08:00", "10:00", True),
+    ("12:00", "14:00", True),
+])
+def test_time_window_search_in_postgres(client, booking, create_spot, start, end, visible):
+    assert client.post("/reservations", json=booking).status_code == 200
+    other = create_spot(1)
+    create_spot(1, available=False)
+    response = client.get("/parking-spots", params={
+        "start_time": f"2026-11-02T{start}:00Z",
+        "end_time": f"2026-11-02T{end}:00Z",
+        "available": True, "owner_id": 1, "min_price": 20, "max_price": 20,
+    })
+    assert response.status_code == 200
+    assert [spot["id"] for spot in response.json()] == (
+        [booking["spot_id"], other["id"]] if visible else [other["id"]]
+    )
+
+
+def test_listing_upgrade_preserves_existing_rows_and_supports_new_fields(client, booking, postgres, auth_headers):
+    engine, run_script = postgres
+    reservation = client.post("/reservations", json=booking).json()
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "ALTER TABLE parking_spots DROP COLUMN title, DROP COLUMN parking_type, DROP COLUMN photo_urls"
+        )
+    for _ in range(2):
+        run_script("migrations/001_demo_listing_details.sql")
+
+    path = f"/parking-spots/{booking['spot_id']}"
+    spot = client.get(path).json()
+    assert spot["description"] == "Test parking"
+    assert "photo_urls" not in spot
+    body = spot | {
+        "title": "Concert parking", "parking_type": "Driveway",
+        "photo_urls": ["https://example.com/parking.jpg"],
+    }
+    owner = auth_headers(1)
+    assert client.put(path, headers=owner, json=body).status_code == 200
+    assert client.get(path).json() == body
+    assert client.patch(f"{path}/availability", headers=owner, json={"available": False}).status_code == 200
+    assert client.get("/parking-spots", params={"available": True}).json() == []
+    assert client.get(f"/reservations/{reservation['id']}").json() == reservation
+
+
+def test_become_host_persists_across_connections(client, signed_in, postgres):
+    user, headers = signed_in("new-host@example.com", is_owner=False)
+    assert client.get("/owners/me/parking-spots", headers=headers).status_code == 403
+    assert client.post("/auth/become-host", headers=headers).json() == user | {"is_owner": True}
+    engine, _ = postgres
+    engine.dispose()
+    assert client.get("/auth/me", headers=headers).json() == user | {"is_owner": True}
+    assert client.get("/owners/me/parking-spots", headers=headers).json() == []

@@ -5,7 +5,24 @@ PostgreSQL. These records survive API restarts. Bearer sessions remain local to
 the FastAPI process, expire after one hour, and are lost on restart. Run a single
 API worker until sessions are shared.
 
-## Set up a local database
+## Start PostgreSQL with Docker
+
+From the repository root, with an unused local port 5432:
+
+```sh
+cp .env.example .env
+# Fill in DATABASE_URL with the same user, database, and password you use below.
+docker volume create parkshare-db-data
+docker run --name parkshare-db -d -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_USER=parkshare -e POSTGRES_DB=parkshare \
+  -e POSTGRES_PASSWORD='<local-password>' -v parkshare-db-data:/var/lib/postgresql/data postgres:16
+docker exec -i parkshare-db psql -U parkshare -d parkshare -v ON_ERROR_STOP=1 < database/schema.sql
+```
+
+Use `docker start parkshare-db` on subsequent runs. On an existing Docker database,
+run the migration below against the existing container instead of bootstrapping.
+
+## Set up or migrate a local database
 
 Use a running PostgreSQL instance and an empty database. Run these commands from
 the repository root using your normal psql connection settings (`PGHOST`,
@@ -18,8 +35,15 @@ psql -v ON_ERROR_STOP=1 -f database/schema.sql
 psql -v ON_ERROR_STOP=1 -f database/seed.sql
 ```
 
-Reuse a database already initialized with the current schema. The schema script
-is a fresh bootstrap. Older schemas require a reviewed migration. The optional
+For a database already running the previous PostgreSQL-backed ParkShare
+schema, apply this additive migration. It preserves existing IDs, listings,
+users and bookings. Fresh installs already include the changes.
+
+```sh
+psql -v ON_ERROR_STOP=1 -f database/migrations/001_demo_listing_details.sql
+```
+
+For earlier database layouts, compare against the current schema first. The optional
 seed runs once and uses generated IDs. Its demo owner has no password. Use
 `POST /auth/register` to create an account that can sign in.
 

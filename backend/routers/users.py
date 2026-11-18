@@ -10,7 +10,10 @@ router = APIRouter()
 @router.get("/users")
 def get_users(repository: Repository):
     with repository.transaction() as records:
-        return records.list("users")
+        return [
+            {"id": user["id"], "name": user["name"], "is_owner": user["is_owner"]}
+            for user in records.list("users")
+        ]
 
 
 @router.post("/users")

@@ -1,4 +1,4 @@
-# Parking Marketplace
+# ParkShare
 
 A React/Vite frontend and FastAPI backend for listing parking spots and making
 reservations. The backend supports registration, bearer-token login, owner-only
@@ -58,8 +58,8 @@ need runtime dependencies.
 ### Start FastAPI
 
 With the virtual environment activated, initialize PostgreSQL once using
-[the database setup steps](database/README.md). If the current schema is already
-installed, reuse it. Copy `.env.example` to `.env` if you need a local configuration
+[the database setup steps](database/README.md). Apply the listing-details
+migration if you are upgrading an existing ParkShare database. Copy `.env.example` to `.env` if you need a local configuration
 file, fill in the connection URL, and export it when starting the API.
 
 ```sh
@@ -75,9 +75,8 @@ at <http://127.0.0.1:8000/docs>, with the OpenAPI schema at
 <http://127.0.0.1:8000/openapi.json>.
 
 Use one API worker because bearer sessions are local to each process. Demo
-accounts and accounts created through legacy `POST /users` have no passwords.
-Register through `/auth/register` to log in, using `is_owner: true` for owner
-functionality.
+accounts seeded by SQL and accounts created through legacy `POST /users` are
+passwordless. Create sign-in accounts from the browser signup page.
 
 ### Run backend tests
 
@@ -107,19 +106,32 @@ set `VITE_API_BASE_URL` or enable maps and destination suggestions with a public
 `VITE_MAPBOX_ACCESS_TOKEN`. FastAPI allows the browser origin
 `http://localhost:5173` by default.
 
-Sign up in the browser for a renter account. For the demo, create a separate host
-through `POST /auth/register` with `is_owner: true`, then sign in as that host.
-The optional SQL seed owner is passwordless. Publish a listing with optional
-latitude and longitude to show it on the map. Browse and reserve from the renter
-account, view or cancel in My Bookings, and use the Host Dashboard to review
-reservations and edit or delete listings. Reservations are immediate. The
-displayed reservation total is a stored estimate of the booking cost and the
-demo has no payment or payout flow.
+### Demo walkthrough
 
-Home supports address text, price, listing availability, and distance from a
-selected Mapbox destination. The API checks time-window conflicts at booking.
-Listings with no coordinates still appear in the list. Mapbox Search Box
-results are used only for destination search and are never persisted.
+1. Sign up as a host by checking **I want to list parking**, or sign in with an
+   existing account and select **Become a host** on the Host Dashboard.
+2. Publish a listing near PNC Bank Arts Center in Holmdel, NJ. Enter coordinates
+   for your own demo parking spot, and add a title, parking type, and up to five
+   HTTPS image links if desired. Use the description for amenities, access
+   instructions, and vehicle restrictions.
+3. Sign out, create a renter account, search for `pnc`, and select **PNC Bank Arts
+   Center**. Choose a start and end time. Open a result or a map marker and reserve
+   the spot with the prefilled interval. Use **My Bookings** to view or cancel it.
+4. Sign back in as the host to see the reservation and its stored booking value.
+   Edit the listing, pause or unpause it, and try deleting it while a reservation
+   exists. Cancel from the renter account before deleting.
+
+PostgreSQL filters reservation overlaps. Adjacent windows are available, and
+booking creation still checks for conflicts in the database. The browser sorts
+and filters by straight-line distance using listing coordinates. Listings without
+coordinates remain in the list unless a radius is set. Mapbox destination
+suggestions are used in the browser and never persisted.
+
+Photo URLs are loaded by the renter's browser from external sites. The host
+controls the content and availability, and an inaccessible image shows a fallback.
+Cancelled bookings are permanently removed. The Past tab shows retained bookings
+whose end time has passed. Reservation totals represent booking value. Payments
+and payouts are outside the demo.
 
 ### Frontend checks
 
@@ -149,3 +161,26 @@ Use FastAPI's `/docs` page for the complete endpoint schemas.
   runs have no migration path in this change.
 - Review the security limitations in the authentication guide before public
   deployment; adding PostgreSQL alone will not address them.
+
+
+## Production configuration
+
+Set `DATABASE_URL` on the backend and set `CORS_ORIGINS` to a comma-separated
+list of approved HTTPS frontend origins. Build the frontend with
+`VITE_API_BASE_URL` set to the HTTPS API URL and `VITE_MAPBOX_ACCESS_TOKEN` set to
+a public token restricted to your site. Serve `frontend/dist` with HTTPS and a
+fallback to `index.html` for frontend routes.
+
+Run schema changes separately and check database connectivity before starting
+the API. Start one worker behind the HTTPS reverse proxy:
+
+```sh
+python -m backend.db.session
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 1
+```
+
+Before public deployment, replace process-local sessions with durable,
+revocable sessions, add login and registration abuse controls, retire the
+passwordless legacy creation route, and set up managed secrets, backups,
+monitoring, and account recovery. Review personal data exposure and external
+image hosting before accepting public listings.

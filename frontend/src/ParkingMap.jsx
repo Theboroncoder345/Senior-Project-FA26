@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { mapboxAccessToken } from './parkingApi'
 
-export default function ParkingMap({ destination, parkingSpots }) {
+export default function ParkingMap({ destination, parkingSpots, listingHref }) {
   const container = useRef(null)
   const destinationMarker = useRef(null)
   const [map, setMap] = useState(null)
@@ -49,14 +49,16 @@ export default function ParkingMap({ destination, parkingSpots }) {
     const markers = parkingSpots.map(spot => {
       const coordinates = [spot.longitude, spot.latitude]
       bounds.extend(coordinates)
-      const popup = new mapboxgl.Popup({ offset: 25 })
-        .setText(`${spot.address} · $${spot.price}/hr`)
+      const content = document.createElement('a')
+      content.href = listingHref?.(spot.id) ?? `/listing/${spot.id}`
+      content.textContent = `${spot.title || spot.address} · $${spot.price}/hr`
+      const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(content)
       return new mapboxgl.Marker().setLngLat(coordinates).setPopup(popup).addTo(map)
     })
     if (destination) bounds.extend([destination.longitude, destination.latitude])
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 0 })
     return () => markers.forEach(marker => marker.remove())
-  }, [destination, map, parkingSpots])
+  }, [destination, listingHref, map, parkingSpots])
 
   useEffect(() => {
     if (!map) return

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import DestinationSearch from '../DestinationSearch'
 import ParkingFilters from '../ParkingFilters'
@@ -14,7 +14,21 @@ export default function HomePage() {
   const [search, setSearch] = useState('')
   const [destination, setDestination] = useState(null)
   const [filters, setFilters] = useState(DEFAULT_PARKING_FILTERS)
-  const listings = useApiResource(parkingSpotsPath(filters), { authenticated: false })
+  const [searchVersion, setSearchVersion] = useState(0)
+  const hasWindow = Boolean(filters.start || filters.end)
+  const validWindow = !hasWindow || (filters.start && filters.end
+    && new Date(filters.start) < new Date(filters.end))
+  const listings = useApiResource(validWindow ? parkingSpotsPath(filters) : null, { authenticated: false })
+  const bookingQuery = hasWindow && validWindow
+    ? '?' + new URLSearchParams({ start: filters.start, end: filters.end }).toString()
+    : ''
+  const listingHref = id => `/listing/${id}${bookingQuery}`
+
+  function resetSearch() {
+    setFilters(DEFAULT_PARKING_FILTERS)
+    updateSearch('')
+    setSearchVersion(version => version + 1)
+  }
   const query = search.trim().toLowerCase()
   const maxDistance = filters.maxDistance === '' ? Infinity : Number(filters.maxDistance)
 
@@ -27,7 +41,7 @@ export default function HomePage() {
     }))
     .filter(spot => {
       if (destination && Number.isFinite(maxDistance)) return spot.distance !== null && spot.distance <= maxDistance
-      return destination || !query || `${spot.address} ${spot.description}`.toLowerCase().includes(query)
+      return destination || !query || `${spot.title ?? ''} ${spot.address} ${spot.description}`.toLowerCase().includes(query)
     })
     .sort((a, b) => {
       if (filters.sortBy === 'price') return a.price - b.price
@@ -39,6 +53,9 @@ export default function HomePage() {
   function updateSearch(value) {
     setSearch(value)
     setDestination(null)
+    setFilters(previous => previous.sortBy === 'distance' || previous.maxDistance
+      ? { ...previous, sortBy: previous.sortBy === 'distance' ? '' : previous.sortBy, maxDistance: '' }
+      : previous)
   }
 
   return (
@@ -56,7 +73,7 @@ export default function HomePage() {
               <div className={styles.searchField}>
                 <label htmlFor="parking-search" className={styles.searchLabel}>📍 Location</label>
                 {hasMapbox ? (
-                  <DestinationSearch id="parking-search" inputClassName={styles.searchInput}
+                  <DestinationSearch key={searchVersion} id="parking-search" inputClassName={styles.searchInput}
                     placeholder="Address or neighborhood…" onQueryChange={updateSearch}
                     onSelect={place => {
                       setDestination(place)
@@ -69,7 +86,21 @@ export default function HomePage() {
                 )}
               </div>
             </div>
-            <p role="note">Choose your booking date and time on the listing page. Availability is checked when you book.</p>
+            <div className={styles.searchRow}>
+              {['start', 'end'].map(field => (
+                <div key={field} className={styles.searchField}>
+                  <label htmlFor={`search-${field}`} className={styles.searchLabel}>
+                    {field === 'start' ? 'Start date and time' : 'End date and time'}
+                  </label>
+                  <input id={`search-${field}`} type="datetime-local" className={styles.searchInput}
+                    value={filters[field]} onChange={event => {
+                      const value = event.target.value
+                      setFilters(previous => ({ ...previous, [field]: value }))
+                    }} />
+                </div>
+              ))}
+            </div>
+            {!validWindow && <p role="status">Choose both times with the end after the start.</p>}
           </div>
         </div>
       </section>
@@ -83,10 +114,10 @@ export default function HomePage() {
             <span className={styles.ctaEmoji}>🏠</span>
             <div>
               <p className={styles.ctaTitle}>Have a driveway or parking space?</p>
-              <p className={styles.ctaSub}>List it for free and start earning money</p>
+              <p className={styles.ctaSub}>Share it with drivers looking for parking</p>
             </div>
           </div>
-          <Link to="/listings/new" className={styles.ctaBtn}>List your space →</Link>
+          <Link to="/host" className={styles.ctaBtn}>List your space →</Link>
         </div>
 
         {/* Section header + filters */}
@@ -94,13 +125,13 @@ export default function HomePage() {
           <h2 className={styles.sectionTitle}>Parking spots</h2>
           <div className={styles.filters}>
             <ParkingFilters filters={filters} setFilters={setFilters}
-              hasDestination={Boolean(destination)} inputClassName={styles.filterBtn} />
+              onReset={resetSearch} hasDestination={Boolean(destination)} inputClassName={styles.filterBtn} />
           </div>
         </div>
 
         {hasMapbox && (mapped.length > 0 || destination) && (
           <Suspense fallback={<p role="status">Loading map…</p>}>
-            <ParkingMap destination={destination} parkingSpots={mapped} />
+            <ParkingMap destination={destination} parkingSpots={mapped} listingHref={listingHref} />
           </Suspense>
         )}
 
@@ -113,13 +144,15 @@ export default function HomePage() {
         {filtered.length > 0 ? (
           <div className={styles.grid}>
             {filtered.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+              <ListingCard key={listing.id} listing={listing} href={listingHref(listing.id)} />
             ))}
           </div>
-        ) : !listings.loading && !listings.error && (
+        ) : validWindow && !listings.loading && !listings.error && (
           <div className={styles.empty}>
             <p className={styles.emptyIcon}>🔍</p>
-            <p className={styles.emptyTitle}>No spots found</p>
+            <p className={styles.emptyTitle}>
+              {hasWindow ? 'No parking spots match this time window and filters' : 'No spots match your search'}
+            </p>
             <p className={styles.emptySub}>Try a different search or filter</p>
           </div>
         )}
@@ -128,14 +161,9 @@ export default function HomePage() {
   )
 }
 
-function ListingCard({ listing }) {
-  const navigate = useNavigate()
-
+function ListingCard({ listing, href }) {
   return (
-    <div
-      className={`${styles.card} ${!listing.available ? styles.cardUnavailable : ''}`}
-      onClick={() => navigate(`/listing/${listing.id}`)}
-    >
+    <div className={`${styles.card} ${!listing.available ? styles.cardUnavailable : ''}`}>
       <div className={styles.cardImage}>
         <span className={styles.cardImageIcon}>🅿</span>
         {!listing.available && (
@@ -144,7 +172,8 @@ function ListingCard({ listing }) {
       </div>
 
       <div className={styles.cardBody}>
-        <h3 className={styles.cardTitle}>{listing.address}</h3>
+        <h3 className={styles.cardTitle}>{listing.title || listing.address}</h3>
+        {listing.title && <p className={styles.cardAddress}>{listing.address}</p>}
         <p className={styles.cardAddress}>{listing.description}</p>
         {listing.distance !== null && <p className={styles.cardAddress}>{listing.distance.toFixed(2)} miles away</p>}
 
@@ -152,11 +181,7 @@ function ListingCard({ listing }) {
           <span className={styles.cardPrice}>
             <strong>${listing.price}</strong>/hr
           </span>
-          {listing.available ? (
-            <button className={styles.bookBtn}>Book now</button>
-          ) : (
-            <button className={styles.bookBtn} disabled>Unavailable</button>
-          )}
+          <Link to={href} className={styles.bookBtn}>{listing.available ? 'View and book' : 'View listing'}</Link>
         </div>
       </div>
     </div>

@@ -1,11 +1,15 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import { photoUrls } from '../parkingApi'
 import { apiRequest } from '../api/client'
-import { useSignOut } from '../api/useApiResource'
+import { useApiResource, useSignOut } from '../api/useApiResource'
 import styles from './NewListingPage.module.css'
 
-const EMPTY_LISTING = { address: '', price: '', description: '', latitude: '', longitude: '' }
+const EMPTY_LISTING = {
+  address: '', price: '', description: '', latitude: '', longitude: '',
+  title: '', parkingType: '', photos: '',
+}
 
 export default function NewListingPage() {
   const navigate = useNavigate()
@@ -16,6 +20,20 @@ export default function NewListingPage() {
   const [form, setForm] = useState(EMPTY_LISTING)
   const [errors, setErrors] = useState({})
   const signOut = useSignOut()
+  const account = useApiResource('/auth/me')
+
+  if (!account.data?.is_owner) {
+    return (
+      <div className={styles.page}>
+        <Navbar accountResource={account} />
+        <main className={styles.main}>
+          {account.loading && <p role="status">Loading your account…</p>}
+          {account.error && <p role="alert">{account.error.message}</p>}
+          {account.data && <Link to="/host">Become a host to list parking</Link>}
+        </main>
+      </div>
+    )
+  }
 
   const update = (field) => (e) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }))
@@ -65,6 +83,9 @@ export default function NewListingPage() {
           price: Number(form.price),
           description: form.description.trim(),
           available: true,
+          title: form.title.trim() || null,
+          parking_type: form.parkingType.trim() || null,
+          photo_urls: photoUrls(form.photos),
           ...(form.latitude && form.longitude ? {
             latitude: Number(form.latitude), longitude: Number(form.longitude),
           } : {}),
@@ -82,7 +103,7 @@ export default function NewListingPage() {
   if (submitted) {
     return (
       <div className={styles.page}>
-        <Navbar />
+        <Navbar accountResource={account} />
         <div className={styles.successPage}>
           <div className={styles.successCard}>
             <span className={styles.successIcon}>🎉</span>
@@ -106,7 +127,7 @@ export default function NewListingPage() {
 
   return (
     <div className={styles.page}>
-      <Navbar />
+      <Navbar accountResource={account} />
 
       <main className={styles.main}>
         {/* Header */}
@@ -150,6 +171,16 @@ export default function NewListingPage() {
                     placeholder="123 Main St, City, State" onChange={update('address')} />
                   {errors.address && <span className={styles.error}>{errors.address}</span>}
                 </div>
+
+                <label className={styles.field}>
+                  <span className={styles.label}>Listing title (optional)</span>
+                  <input className={styles.input} maxLength={100} value={form.title} onChange={update('title')} />
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>Parking type (optional)</span>
+                  <input className={styles.input} maxLength={60} placeholder="Driveway, garage, or lot"
+                    value={form.parkingType} onChange={update('parkingType')} />
+                </label>
 
                 <details className={styles.field}>
                   <summary>Map coordinates (optional)</summary>
@@ -195,7 +226,7 @@ export default function NewListingPage() {
                 <div className={styles.field}>
                   <label className={styles.label}>Description</label>
                   <textarea
-                    placeholder="Describe your space — size, access instructions, nearby landmarks, anything helpful for the renter…"
+                    placeholder="Describe the space, amenities, access instructions, and vehicle restrictions…"
                     value={form.description}
                     onChange={update('description')}
                     className={`${styles.textarea} ${errors.description ? styles.inputError : ''}`}
@@ -215,12 +246,18 @@ export default function NewListingPage() {
             {step === 3 && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>Review and publish</h2>
-                <p className={styles.stepSub}>Photo uploads are unavailable.</p>
+                <label className={styles.field}>
+                  <span className={styles.label}>Photo links (optional)</span>
+                  <textarea className={styles.textarea} rows={3} value={form.photos} onChange={update('photos')}
+                    placeholder="Up to 5 HTTPS image URLs, one per line" />
+                </label>
 
                 {/* Summary */}
                 <div className={styles.summary}>
                   <h3 className={styles.summaryTitle}>Review your listing</h3>
                   <div className={styles.summaryGrid}>
+                    {form.title && <SummaryRow label="Title" value={form.title} />}
+                    {form.parkingType && <SummaryRow label="Parking type" value={form.parkingType} />}
                     <SummaryRow label="Address" value={form.address} />
                     <SummaryRow label="Price" value={`$${form.price}/hr`} />
                     <SummaryRow label="Description" value={form.description} />

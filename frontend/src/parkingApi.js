@@ -8,17 +8,28 @@ export function parkingLocation(spot) {
     : null
 }
 
-export function parkingSpotsPath({ maxPrice = '', available = '' } = {}) {
+export function parkingSpotsPath({ maxPrice = '', available = '', start = '', end = '' } = {}) {
   const query = new URLSearchParams()
   if (maxPrice !== '' && Number(maxPrice) >= 0) query.set('max_price', maxPrice)
   if (available !== '') query.set('available', available)
+  if (start && end) {
+    query.set('start_time', new Date(start).toISOString())
+    query.set('end_time', new Date(end).toISOString())
+  }
   const suffix = query.toString()
   return suffix ? `/parking-spots?${suffix}` : '/parking-spots'
 }
 
 export const DEFAULT_PARKING_FILTERS = {
+  start: '',
+  end: '',
   maxPrice: '',
   maxDistance: '',
   available: 'true',
   sortBy: '',
+}
+
+
+export function photoUrls(value) {
+  return value.split(/\r?\n/).map(url => url.trim()).filter(Boolean)
 }
