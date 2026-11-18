@@ -16,8 +16,6 @@ const AMENITIES_OPTIONS = [
   { id: 'paved',       label: '🛣️ Paved surface',    },
 ]
 
-const MOCK_USER = { firstName: 'Christopher', lastName: 'M', email: 'chris@example.com' }
-
 export default function NewListingPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
@@ -90,7 +88,7 @@ export default function NewListingPage() {
   if (submitted) {
     return (
       <div className={styles.page}>
-        <Navbar user={MOCK_USER} />
+        <Navbar />
         <div className={styles.successPage}>
           <div className={styles.successCard}>
             <span className={styles.successIcon}>🎉</span>
@@ -114,7 +112,7 @@ export default function NewListingPage() {
 
   return (
     <div className={styles.page}>
-      <Navbar user={MOCK_USER} />
+      <Navbar />
 
       <main className={styles.main}>
         {/* Header */}

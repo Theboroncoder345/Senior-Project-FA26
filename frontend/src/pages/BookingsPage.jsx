@@ -68,8 +68,6 @@ const STATUS_CONFIG = {
 
 const TABS = ['All', 'Upcoming', 'Completed', 'Cancelled']
 
-const MOCK_USER = { firstName: 'Christopher', lastName: 'M', email: 'chris@example.com' }
-
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
@@ -96,7 +94,7 @@ export default function BookingsPage() {
 
   return (
     <div className={styles.page}>
-      <Navbar user={MOCK_USER} />
+      <Navbar />
 
       <main className={styles.main}>
         <div className={styles.header}>

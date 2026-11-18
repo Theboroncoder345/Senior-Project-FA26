@@ -97,8 +97,6 @@ const STATUS_CONFIG = {
   completed: { label: 'Completed', bg: '#f8fafc', color: '#475569', dot: '#94a3b8' },
 }
 
-const MOCK_USER = { firstName: 'Christopher', lastName: 'M', email: 'chris@example.com' }
-
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
@@ -142,7 +140,7 @@ export default function HostDashboardPage() {
 
   return (
     <div className={styles.page}>
-      <Navbar user={MOCK_USER} />
+      <Navbar />
 
       <main className={styles.main}>
 

@@ -7,6 +7,14 @@ export class ApiError extends Error {
   }
 }
 
+export function clearAccessToken() {
+  try {
+    localStorage.removeItem('access_token')
+  } catch {
+    // Return to login even if storage is unavailable.
+  }
+}
+
 export async function apiRequest(path, { body, authenticated = true, ...options } = {}) {
   const headers = { ...options.headers }
   if (authenticated) {
@@ -46,9 +54,7 @@ export async function apiRequest(path, { body, authenticated = true, ...options 
       409: typeof data?.detail === 'string' ? data.detail : 'This action conflicts with an existing booking.',
       422: 'Please check the form fields and reservation times.',
     }
-    if (response.status === 401) {
-      try { localStorage.removeItem('access_token') } catch { /* Return to login even if storage is blocked. */ }
-    }
+    if (response.status === 401 && !options.signal?.aborted) clearAccessToken()
     throw new ApiError(messages[response.status] || 'The server could not complete the request. Please try again.', response.status)
   }
   if (data === undefined) throw new ApiError('The server returned an unexpected response. Please try again.', 0)

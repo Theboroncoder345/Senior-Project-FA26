@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -7,7 +7,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
+  const { state } = useLocation()
+  const [error, setError] = useState(state?.sessionMessage ?? '')
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {

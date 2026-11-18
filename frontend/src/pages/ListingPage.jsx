@@ -98,8 +98,6 @@ const TYPE_COLORS = {
   Garage:   { bg: '#faf5ff', color: '#9333ea' },
 }
 
-const MOCK_USER = { firstName: 'Christopher', lastName: 'M', email: 'chris@example.com' }
-
 // Generate time options in 15-minute increments (12:00 AM → 11:45 PM)
 function generateTimeSlots() {
   const slots = []
@@ -130,7 +128,7 @@ export default function ListingPage() {
   if (!listing) {
     return (
       <div className={styles.page}>
-        <Navbar user={MOCK_USER} />
+        <Navbar />
         <div className={styles.notFound}>
           <p className={styles.notFoundIcon}>🅿</p>
           <h2>Listing not found</h2>
@@ -151,7 +149,7 @@ export default function ListingPage() {
 
   return (
     <div className={styles.page}>
-      <Navbar user={MOCK_USER} />
+      <Navbar />
 
       <div className={styles.container}>
 

@@ -77,8 +77,6 @@ const TYPE_COLORS = {
   Garage:   { bg: '#faf5ff', color: '#9333ea' },
 }
 
-const MOCK_USER = { firstName: 'Christopher', lastName: 'M', email: 'chris@example.com' }
-
 export default function HomePage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
@@ -109,7 +107,7 @@ export default function HomePage() {
 
   return (
     <div className={styles.page}>
-      <Navbar user={MOCK_USER} />
+      <Navbar />
 
       {/* ── Hero search banner ── */}
       <section className={styles.hero}>

@@ -1,15 +1,45 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { apiRequest, clearAccessToken } from '../api/client'
 import styles from './Navbar.module.css'
 
-export default function Navbar({ user }) {
+export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [account, setAccount] = useState(null)
+  const [accountError, setAccountError] = useState('')
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    // TODO: clear auth token/session with backend
-    navigate('/login')
-  }
+  const signOut = useCallback((sessionMessage = '') => {
+    clearAccessToken()
+    navigate('/login', { replace: true, state: { sessionMessage } })
+  }, [navigate])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadAccount() {
+      try {
+        const user = await apiRequest('/auth/me', { signal: controller.signal })
+        if (controller.signal.aborted) return
+        if (typeof user?.name !== 'string' || typeof user?.email !== 'string') {
+          throw new Error('The server returned an invalid account.')
+        }
+        setAccount(user)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        if (error.status === 401) signOut(error.message)
+        else setAccountError(error.message)
+      }
+    }
+
+    loadAccount()
+    return () => controller.abort()
+  }, [signOut])
+
+  const nameParts = account?.name.trim().split(/\s+/) ?? []
+  const initials = nameParts.length > 1
+    ? nameParts[0][0] + nameParts.at(-1)[0]
+    : nameParts[0]?.[0] || 'U'
 
   return (
     <nav className={styles.nav}>
@@ -35,15 +65,17 @@ export default function Navbar({ user }) {
             aria-label="User menu"
           >
             <span className={styles.avatarInitials}>
-              {user?.firstName?.[0] ?? 'U'}{user?.lastName?.[0] ?? ''}
+              {initials}
             </span>
           </button>
 
           {menuOpen && (
             <div className={styles.dropdown}>
               <div className={styles.dropdownHeader}>
-                <p className={styles.dropdownName}>{user?.firstName ?? 'User'} {user?.lastName ?? ''}</p>
-                <p className={styles.dropdownEmail}>{user?.email ?? ''}</p>
+                <p className={styles.dropdownName}>{account?.name ?? 'User'}</p>
+                {account
+                  ? <p className={styles.dropdownEmail}>{account.email}</p>
+                  : <p className={styles.dropdownEmail} role="status">{accountError || 'Checking your login…'}</p>}
               </div>
               <div className={styles.dropdownDivider} />
               <Link to="/profile" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
@@ -56,7 +88,7 @@ export default function Navbar({ user }) {
                 🏠 Switch to hosting
               </Link>
               <div className={styles.dropdownDivider} />
-              <button className={styles.dropdownLogout} onClick={handleLogout}>
+              <button className={styles.dropdownLogout} onClick={() => signOut()}>
                 🚪 Sign out
               </button>
             </div>
