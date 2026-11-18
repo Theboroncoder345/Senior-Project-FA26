@@ -49,11 +49,11 @@ export default function Navbar({ user }) {
               <Link to="/profile" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
                 👤 My Profile
               </Link>
-              <Link to="/listings" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
-                🏠 My Listings
-              </Link>
               <Link to="/bookings" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
                 📅 My Bookings
+              </Link>
+              <Link to="/host" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
+                🏠 Switch to hosting
               </Link>
               <div className={styles.dropdownDivider} />
               <button className={styles.dropdownLogout} onClick={handleLogout}>
