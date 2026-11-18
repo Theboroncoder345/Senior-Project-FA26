@@ -34,6 +34,6 @@ if __name__ == "__main__":
     try:
         if not check_connection(engine):
             raise RuntimeError("PostgreSQL connectivity check failed")
-        print("PostgreSQL connection verified; API routes still use in-memory storage.")
+        print("PostgreSQL connection verified.")
     finally:
         engine.dispose()

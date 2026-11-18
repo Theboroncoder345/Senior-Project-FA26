@@ -2,8 +2,9 @@
 
 A React/Vite frontend and FastAPI backend for listing parking spots and making
 reservations. The backend supports registration, bearer-token login, owner-only
-listing management, and reservation permissions. PostgreSQL integration is
-pending: records and sessions currently live in memory and reset on restart.
+listing management, and reservation permissions. PostgreSQL stores users,
+password hashes, listings, and reservations across FastAPI restarts. Bearer
+sessions are process-local, so users sign in again after a restart.
 
 ## Repository layout
 
@@ -12,12 +13,11 @@ Senior-Project-FA26/
 ├── backend/
 │   ├── __init__.py
 │   ├── main.py                  # FastAPI application and CORS
-│   ├── db/                      # Explicit PostgreSQL config, sessions, field mappings
+│   ├── db/                      # PostgreSQL repository, configuration, and mapping
 │   ├── models/                  # Request/response models and validation
 │   ├── routers/                 # Auth, users, parking spots, reservations
 │   ├── tests/                   # pytest/TestClient tests
 │   ├── security.py              # Password hashing and session helpers
-│   ├── store.py                 # In-memory records, counters, and lock
 │   ├── validation.py            # Shared authorization checks
 │   ├── requirements.txt         # Runtime dependencies
 │   ├── requirements-dev.txt     # Runtime and test dependencies
@@ -57,9 +57,16 @@ need runtime dependencies.
 
 ### Start FastAPI
 
-With the virtual environment activated, run from the repository root:
+With the virtual environment activated, initialize PostgreSQL once using
+[the database setup steps](database/README.md). If the current schema is already
+installed, reuse it. Copy `.env.example` to `.env` if you need a local configuration
+file, fill in the connection URL, and export it when starting the API.
 
 ```sh
+# From the repository root, with a local shell-compatible .env:
+set -a
+source .env
+set +a
 python -m uvicorn backend.main:app --reload
 ```
 
@@ -67,22 +74,22 @@ The API runs at <http://127.0.0.1:8000>. Interactive API documentation is availa
 at <http://127.0.0.1:8000/docs>, with the OpenAPI schema at
 <http://127.0.0.1:8000/openapi.json>.
 
-Use one server process while storage is in memory. Authentication, records, and
-locks are not shared across multiple workers. The demo owners and legacy accounts
-have no passwords; register a new account through `/auth/register` to log in.
-For owner functionality, register with `is_owner: true`.
+Use one API worker because bearer sessions are local to each process. Demo
+accounts and accounts created through legacy `POST /users` have no passwords.
+Register through `/auth/register` to log in, using `is_owner: true` for owner
+functionality.
 
 ### Run backend tests
 
 ```sh
-python -m pytest -c backend/pytest.ini -q
+python -m pytest -c backend/pytest.ini -m "not postgres" -q
+# With DATABASE_URL exported and the database initialized:
+python -m pytest -c backend/pytest.ini -m postgres -q
 ```
 
-Tests isolate in-memory records and sessions. If you are already inside
-`backend/`, `python -m pytest -q` also works with the same activated environment.
-Python imports use the `backend` package, so the old root-level `main:app` command
-has been replaced by `backend.main:app`. The obsolete root `main.py` was removed
-to prevent accidentally launching a different backend.
+The Docker-free suite uses an isolated test repository and fresh bearer sessions.
+The integration suite creates and removes uniquely named schemas in the configured
+database. See the [database guide](database/README.md) for the permissions it needs.
 
 ## Frontend setup
 
@@ -127,10 +134,7 @@ Use FastAPI's `/docs` page for the complete endpoint schemas.
 - Do not commit virtual environments, `node_modules`, build output, Python/test
   caches, `.DS_Store`, or `.env` files. The root `.gitignore` covers these items;
   install dependencies locally after cloning.
-- PostgreSQL schema constraints, safe non-login seed data, connection/session
-  factories, and explicit API field mappings are prepared. Routes still use memory;
-  setting `DATABASE_URL` does not enable persistence. No database is needed for
-  current API usage or tests. See [database/README.md](database/README.md) for setup,
-  the complete schema change rationale, migration cautions, and remaining work.
+- The switch uses the current PostgreSQL schema. Records from earlier in-memory
+  runs have no migration path in this change.
 - Review the security limitations in the authentication guide before public
   deployment; adding PostgreSQL alone will not address them.

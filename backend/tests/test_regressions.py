@@ -153,12 +153,6 @@ def test_ids_not_reused_after_deletion(client, booking, create_spot, auth_header
     assert create_spot(1)['id'] > spare['id']
 
 
-def test_seed_spots_have_registered_owners():
-    from backend import store
-    for spot in store.parking_spots:
-        assert any(user['id'] == spot['owner_id'] and user['is_owner'] for user in store.users)
-
-
 @pytest.mark.parametrize('path', [
     '/parking-spots/0', '/reservations/-1',
     '/users/0/reservations', '/owners/-1/reservations',
@@ -194,15 +188,3 @@ def test_scoped_reservation_lists(client, booking, create_user, create_spot, aut
     assert client.get(f"/owners/{other_owner['id']}/reservations", headers=auth_headers(other_owner['id'])).json() == [second]
     assert client.get(f"/users/{booking['user_id']}/reservations").json() == [first]
     assert client.get('/owners/2/reservations').status_code == 403
-
-
-def test_seed_id_counters_start_above_existing_ids():
-    from runpy import run_path
-    from backend import store
-    fresh_store = run_path(store.__file__)
-    for records_name, counter_name in [
-        ('users', 'user_ids'), ('parking_spots', 'parking_spot_ids'),
-        ('reservations', 'reservation_ids'),
-    ]:
-        records = fresh_store[records_name]
-        assert next(fresh_store[counter_name]) > max((item['id'] for item in records), default=0)

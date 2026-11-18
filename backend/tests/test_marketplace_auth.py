@@ -1,6 +1,6 @@
 import pytest
 
-from backend.routers import auth, reservations, users
+from backend.routers import auth
 from backend import security
 
 
@@ -23,19 +23,19 @@ def reservation_payload():
 
 @pytest.mark.parametrize('path', ['/parking-spots', '/reservations'])
 @pytest.mark.parametrize('authorization', [None, 'Bearer invalid', 'Basic invalid'])
-def test_creation_requires_bearer_auth(client, spot_payload, reservation_payload, path, authorization):
+def test_creation_requires_bearer_auth(client, spot_payload, reservation_payload, path, authorization, repository):
     payload = spot_payload if path == '/parking-spots' else reservation_payload
     headers = {} if authorization is None else {'Authorization': authorization}
     response = client.post(path, json=payload, headers=headers)
     assert response.status_code == 401
     assert response.headers['www-authenticate'] == 'Bearer'
     assert client.get('/parking-spots').json() == []
-    assert reservations.reservations == []
+    assert repository.list("reservations") == []
 
 
 @pytest.mark.parametrize('path', ['/parking-spots', '/reservations'])
 def test_creation_rejects_expired_session(
-    client, signed_in, spot_payload, reservation_payload, path, monkeypatch,
+    client, signed_in, spot_payload, reservation_payload, path, monkeypatch, repository,
 ):
     _, headers = signed_in()
     token = headers['Authorization'].split()[1]
@@ -45,7 +45,7 @@ def test_creation_rejects_expired_session(
     response = client.post(path, json=payload, headers=headers)
     assert response.status_code == 401
     assert client.get('/parking-spots').json() == []
-    assert reservations.reservations == []
+    assert repository.list("reservations") == []
 
 
 def test_owner_creates_spot_without_body_owner_id(client, signed_in, spot_payload):
@@ -81,7 +81,11 @@ def test_authenticated_user_can_reserve_without_body_user_id(
     renter, renter_headers = signed_in('renter@example.com', is_owner=is_owner)
     response = client.post('/reservations', json=reservation_payload, headers=renter_headers)
     assert response.status_code == 200
-    assert response.json() == {'id': 1, **reservation_payload, 'user_id': renter['id']}
+    assert response.json() == {
+        'id': 1, **reservation_payload, 'user_id': renter['id'],
+        'start_time': reservation_payload['start_time'] + '+00:00',
+        'end_time': reservation_payload['end_time'] + '+00:00',
+    }
 
 
 def test_spoofed_reservation_user_id_is_ignored(client, signed_in, spot_payload, reservation_payload):
@@ -94,9 +98,9 @@ def test_spoofed_reservation_user_id_is_ignored(client, signed_in, spot_payload,
     assert client.get(f"/users/{renter['id']}/reservations", headers=renter_headers).json() == [response.json()]
 
 
-def test_removed_user_session_rejected(client, signed_in, spot_payload):
+def test_removed_user_session_rejected(client, signed_in, spot_payload, repository):
     user, headers = signed_in()
-    users.users.remove(user)
+    repository.delete("users", user["id"])
     response = client.post('/parking-spots', json=spot_payload, headers=headers)
     assert response.status_code == 401
     assert client.get('/parking-spots').json() == []

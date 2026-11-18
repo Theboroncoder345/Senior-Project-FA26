@@ -1,1 +1,1 @@
-"""PostgreSQL preparation; API storage remains in memory."""
+"""PostgreSQL configuration, transactions, and record mapping."""

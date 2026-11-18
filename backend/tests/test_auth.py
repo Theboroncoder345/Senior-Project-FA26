@@ -25,25 +25,25 @@ def login(client, registration, **changes):
     })
 
 
-def test_registration_hashes_password_without_exposing_it(client, registration):
+def test_registration_hashes_password_without_exposing_it(client, registration, repository):
     response = client.post('/auth/register', json=registration)
     assert response.status_code == 201
     expected = {'id': 1, 'name': 'Alice', 'email': 'alice@example.com', 'is_owner': False}
     assert response.json() == expected
     assert client.get('/users').json() == [expected]
-    stored_hash = auth.password_hashes[1]
+    stored_hash = repository.password_hashes[1]
     assert stored_hash.startswith('$argon2id$')
     assert stored_hash != registration['password']
     assert security.verify_password(registration['password'], stored_hash)
 
 
 @pytest.mark.parametrize('email', ['alice@example.com', ' ALICE@Example.COM '])
-def test_registration_duplicate_email(client, registration, registered, email):
+def test_registration_duplicate_email(client, registration, registered, email, repository):
     response = client.post('/auth/register', json=registration | {'email': email})
     assert response.status_code == 409
     assert response.json() == {'detail': 'Email already registered'}
     assert client.get('/users').json() == [registered]
-    assert len(auth.password_hashes) == 1
+    assert len(repository.password_hashes) == 1
     assert login(client, registration).status_code == 200
 
 
@@ -76,12 +76,12 @@ def test_login_rejects_invalid_credentials(client, registration, registered, cha
     assert auth.sessions == {}
 
 
-def test_legacy_user_cannot_login_or_be_overwritten(client, create_user, registration):
+def test_legacy_user_cannot_login_or_be_overwritten(client, create_user, registration, repository):
     legacy = create_user(registration['email'])
     assert login(client, registration).status_code == 401
     assert client.post('/auth/register', json=registration).status_code == 409
     assert client.get('/users').json() == [legacy]
-    assert auth.password_hashes == {}
+    assert repository.password_hashes == {}
 
 
 def test_legacy_creation_rejects_auth_registered_email(client, registered):
@@ -92,11 +92,11 @@ def test_legacy_creation_rejects_auth_registered_email(client, registered):
 
 
 @pytest.mark.parametrize('password', ['', 'short', ' ' * 8, 'x' * 129])
-def test_registration_password_validation(client, registration, password):
+def test_registration_password_validation(client, registration, password, repository):
     response = client.post('/auth/register', json=registration | {'password': password})
     assert response.status_code == 422
     assert client.get('/users').json() == []
-    assert auth.password_hashes == {}
+    assert repository.password_hashes == {}
 
 
 def test_password_whitespace_is_preserved(client, registration):
@@ -106,10 +106,10 @@ def test_password_whitespace_is_preserved(client, registration):
     assert login(client, payload, password=payload['password'].strip()).status_code == 401
 
 
-def test_same_password_has_different_salted_hashes(client, registration, registered):
+def test_same_password_has_different_salted_hashes(client, registration, registered, repository):
     second = client.post('/auth/register', json=registration | {'email': 'other@example.com'})
     assert second.status_code == 201
-    assert auth.password_hashes[registered['id']] != auth.password_hashes[second.json()['id']]
+    assert repository.password_hashes[registered['id']] != repository.password_hashes[second.json()['id']]
 
 
 @pytest.mark.parametrize('authorization', [None, 'Bearer invalid-token', 'Basic invalid'])

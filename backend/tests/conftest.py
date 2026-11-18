@@ -1,30 +1,22 @@
-from itertools import count
-
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend import security
-from backend.routers import auth, parking_spots, reservations, users
+from backend.db.repository import get_repository
+from backend.routers import auth
+from backend.tests.memory_repository import MemoryRepository
 
 
 @pytest.fixture
-def client(monkeypatch):
-    # Replace every imported reference so tests share fresh data and counters.
-    monkeypatch.setattr(auth, 'password_hashes', {})
-    monkeypatch.setattr(auth, 'sessions', {})
-    test_users = []
-    test_spots = []
-    test_reservations = []
-    for module in (users, parking_spots, reservations):
-        monkeypatch.setattr(module, 'users', test_users)
-    for module in (parking_spots, reservations):
-        monkeypatch.setattr(module, 'parking_spots', test_spots)
-    for module in (parking_spots, reservations):
-        monkeypatch.setattr(module, 'reservations', test_reservations)
-    monkeypatch.setattr(users, 'user_ids', count(1))
-    monkeypatch.setattr(parking_spots, 'parking_spot_ids', count(1))
-    monkeypatch.setattr(reservations, 'reservation_ids', count(1))
+def repository():
+    return MemoryRepository()
+
+
+@pytest.fixture
+def client(monkeypatch, repository):
+    monkeypatch.setattr(auth, "sessions", {})
+    monkeypatch.setitem(app.dependency_overrides, get_repository, lambda: repository)
     with TestClient(app) as test_client:
         yield test_client
 

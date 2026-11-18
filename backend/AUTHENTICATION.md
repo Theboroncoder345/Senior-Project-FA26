@@ -1,16 +1,17 @@
-# In-memory authentication and marketplace authorization
+# Authentication and marketplace authorization
 
 ## Run and test
 
 ```sh
 python -m pip install -r backend/requirements-dev.txt
 python -m uvicorn backend.main:app --reload
-python -m pytest -c backend/pytest.ini -q
+python -m pytest -c backend/pytest.ini -m "not postgres" -q
 ```
 
 Run these commands from the repository root with your virtual environment activated.
-Install `backend/requirements.txt` for runtime dependencies alone. Use one server process
-until storage is persistent.
+Install `backend/requirements.txt` for runtime dependencies alone. Initialize PostgreSQL
+and export `DATABASE_URL` before starting FastAPI. Use one server process for bearer
+sessions. See the [database guide](../database/README.md).
 
 ## Register and log in
 
@@ -56,12 +57,12 @@ returns the authenticated public user. Missing, invalid, expired, or deleted-use
 sessions return **401** with `WWW-Authenticate: Bearer`. Sessions expire after one
 hour without automatic refresh. Passwords use salted Argon2 hashing via `pwdlib`,
 following [FastAPI's guidance](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/).
-Password hashes and token digests are separate from public user records. Raw
-passwords and bearer tokens are not retained in the in-memory stores.
+PostgreSQL stores password hashes with user records and the API omits them from
+responses. The process keeps token digests, user IDs, and expiration times in memory.
 
 ## Route permissions
 
-All existing endpoint paths are preserved. The two literal `/me` paths are new.
+All existing endpoint paths are preserved.
 
 | Route | Access |
 | --- | --- |
@@ -172,9 +173,9 @@ Existing creation success codes remain **200**; registration remains **201**.
 Prices must be finite and nonnegative; addresses/descriptions cannot be blank.
 Reservation end time must follow start time. Mixed timezone awareness within a
 booking is rejected; naive timestamps are treated as UTC when comparing different
-bookings. Adjacent intervals are allowed. Availability checks, overlap checks,
-monotonic IDs, and mutation locking remain intact. Authorization and write checks
-run under the same in-process lock to prevent check/write races.
+bookings. Reservation responses use explicit UTC offsets. Adjacent intervals
+are allowed. PostgreSQL transactions coordinate listing changes and bookings.
+The database exclusion constraint rejects overlaps.
 
 ## Files and tests
 
@@ -194,11 +195,10 @@ No frontend files are changed by the authorization work. The existing login page
 and protected profile page remain intact. CORS permits only `http://localhost:5173`
 and allows the `Authorization` header.
 
-## Remaining pre-database limitations
+## Remaining limitations
 
-- Storage and sessions are process-local and reset on restart. Multiple workers
-  do not share data or locks. PostgreSQL needs migrations, foreign keys, unique
-  email constraints, and transactions/concurrency protection for overlapping bookings.
+- Users, listings, and reservations persist in PostgreSQL. Bearer sessions reset
+  on restart and each worker has its own sessions.
 - Demo owners and accounts created through legacy `POST /users` have no passwords
   and cannot log in. They cannot be claimed through registration. A credential
   migration/reset flow is still needed.

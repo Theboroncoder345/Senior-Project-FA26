@@ -1,9 +1,6 @@
-"""Explicit boundary between SQL column names and existing API dictionaries.
-
-Database-only metadata never leaks into API responses. No billing calculation is
-introduced; total_cost remains nullable until a billing policy is agreed.
-"""
+"""Map database rows to the public API fields, excluding private metadata."""
 from datetime import timezone
+
 
 FIELDS = {
     "users": {"id": "user_id", "name": "full_name", "email": "email", "is_owner": "is_owner"},

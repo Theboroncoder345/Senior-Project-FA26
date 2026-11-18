@@ -61,7 +61,11 @@ def test_invalid_spot_fields(client, create_user, auth_headers, override, field)
 def test_valid_reservation(client, booking):
     response = client.post('/reservations', json=booking)
     assert response.status_code == 200
-    assert response.json() == {'id': 1, **booking}
+    assert response.json() == {
+        'id': 1, **booking,
+        'start_time': booking['start_time'] + '+00:00',
+        'end_time': booking['end_time'] + '+00:00',
+    }
     assert client.get('/reservations/1').json() == response.json()
     assert client.get('/reservations').json() == [response.json()]
 

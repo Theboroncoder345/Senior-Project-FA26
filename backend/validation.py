@@ -1,8 +1,7 @@
 from fastapi import HTTPException
 
 
-def require_owner(users, owner_id):
-    owner = next((user for user in users if user["id"] == owner_id), None)
+def require_owner(owner):
     if owner is None:
         raise HTTPException(status_code=404, detail="Owner not found")
     if not owner["is_owner"]:
