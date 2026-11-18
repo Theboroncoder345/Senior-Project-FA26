@@ -1,4 +1,6 @@
-export const hasMapbox = Boolean(import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim())
+export const mapboxAccessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim()
+  || import.meta.env.VITE_MAPBOX_TOKEN?.trim()
+export const hasMapbox = Boolean(mapboxAccessToken)
 
 export function parkingLocation(spot) {
   return Number.isFinite(spot?.latitude) && Number.isFinite(spot?.longitude)
