@@ -1,94 +1,35 @@
-export default function ParkingFilters({
-  filters,
-  setFilters,
-}) {
-  function updateFilter(name, value) {
-    setFilters((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
+import { DEFAULT_PARKING_FILTERS } from './parkingApi'
+
+export default function ParkingFilters({ filters, setFilters, hasDestination, inputClassName }) {
+  function update(name, value) {
+    setFilters(previous => ({ ...previous, [name]: value }))
   }
 
   return (
-    <div className="parking-filters">
-      <h3>Filter Parking</h3>
-
-      <div>
-        <label>Maximum Price ($/hour)</label>
-        <input
-          type="number"
-          min="0"
-          value={filters.maxPrice}
-          onChange={(e) =>
-            updateFilter("maxPrice", e.target.value)
-          }
-        />
-      </div>
-
-      <div>
-        <label>Maximum Distance (miles)</label>
-        <input
-          type="number"
-          min="0"
-          value={filters.maxDistance}
-          onChange={(e) =>
-            updateFilter("maxDistance", e.target.value)
-          }
-        />
-      </div>
-
-      <div>
-        <label>
-          <input
-            type="checkbox"
-            checked={filters.covered}
-            onChange={(e) =>
-              updateFilter("covered", e.target.checked)
-            }
-          />
-          Covered Parking
-        </label>
-      </div>
-
-      <div>
-        <label>
-          <input
-            type="checkbox"
-            checked={filters.evCharging}
-            onChange={(e) =>
-              updateFilter("evCharging", e.target.checked)
-            }
-          />
-          EV Charging
-        </label>
-      </div>
-
-      <div>
-        <label>Sort Results</label>
-        <select
-          value={filters.sortBy}
-          onChange={(e) =>
-            updateFilter("sortBy", e.target.value)
-          }
-        >
-          <option value="distance">Closest First</option>
-          <option value="price">Lowest Price First</option>
-        </select>
-      </div>
-
-      <button
-        onClick={() =>
-          setFilters({
-            maxPrice: "",
-            maxDistance: "",
-            covered: false,
-            evCharging: false,
-            sortBy: "distance",
-          })
-        }
-      >
-        Clear Filters
+    <>
+      <input className={inputClassName} type="number" min="0" step="any"
+        aria-label="Maximum price per hour" placeholder="Max price / hr"
+        value={filters.maxPrice} onChange={e => update('maxPrice', e.target.value)} />
+      <select className={inputClassName} aria-label="Listing availability"
+        value={filters.available} onChange={e => update('available', e.target.value)}>
+        <option value="true">Active spots</option>
+        <option value="">All spots</option>
+        <option value="false">Unavailable spots</option>
+      </select>
+      {hasDestination && (
+        <input className={inputClassName} type="number" min="0" step="any"
+          aria-label="Maximum distance in miles" placeholder="Max miles"
+          value={filters.maxDistance} onChange={e => update('maxDistance', e.target.value)} />
+      )}
+      <select className={inputClassName} aria-label="Sort results"
+        value={filters.sortBy} onChange={e => update('sortBy', e.target.value)}>
+        <option value="">Default order</option>
+        <option value="price">Lowest price first</option>
+        {hasDestination && <option value="distance">Closest first</option>}
+      </select>
+      <button type="button" className={inputClassName} onClick={() => setFilters(DEFAULT_PARKING_FILTERS)}>
+        Clear filters
       </button>
-    </div>
-  );
+    </>
+  )
 }

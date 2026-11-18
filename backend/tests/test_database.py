@@ -58,7 +58,8 @@ def test_reservation_mapping_normalizes_naive_and_offset_times():
     assert row['start_time'] == datetime(2026, 1, 1, 10, tzinfo=timezone.utc)
     assert row['end_time'] == datetime(2026, 1, 1, 13, tzinfo=timezone.utc)
     result = to_api('reservations', {**row, 'total_cost': 10})
-    assert set(result) == set(api)
+    assert set(result) == set(api) | {"total_cost"}
+    assert result["total_cost"] == 10
     assert 'total_cost' not in row
 
 

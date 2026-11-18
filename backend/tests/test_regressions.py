@@ -67,7 +67,7 @@ def test_reserved_spot_deletion_is_rejected_until_reservation_removed(client, bo
     response = client.delete(path, headers=auth_headers(1))
     assert response.status_code == 409
     assert client.get(path).status_code == 200
-    assert client.get('/owners/1/reservations', headers=auth_headers(1)).json() == [reservation]
+    assert client.get('/owners/1/reservations', headers=auth_headers(1)).json() == [reservation | {"renter_name": "Test User"}]
     assert client.delete(f"/reservations/{reservation['id']}").status_code == 200
     assert client.delete(path, headers=auth_headers(1)).status_code == 200
     assert client.get(path).status_code == 404
@@ -184,7 +184,7 @@ def test_scoped_reservation_lists(client, booking, create_user, create_spot, aut
     second = client.post('/reservations', headers=auth_headers(other_owner['id']), json=booking | {
         'user_id': other_owner['id'], 'spot_id': other_spot['id'],
     }).json()
-    assert client.get('/owners/1/reservations', headers=auth_headers(1)).json() == [first]
-    assert client.get(f"/owners/{other_owner['id']}/reservations", headers=auth_headers(other_owner['id'])).json() == [second]
+    assert client.get('/owners/1/reservations', headers=auth_headers(1)).json() == [first | {"renter_name": "Test User"}]
+    assert client.get(f"/owners/{other_owner['id']}/reservations", headers=auth_headers(other_owner['id'])).json() == [second | {"renter_name": "Test User"}]
     assert client.get(f"/users/{booking['user_id']}/reservations").json() == [first]
     assert client.get('/owners/2/reservations').status_code == 403

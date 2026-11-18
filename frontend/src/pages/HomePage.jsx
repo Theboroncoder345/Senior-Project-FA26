@@ -1,109 +1,45 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import DestinationSearch from '../DestinationSearch'
+import ParkingFilters from '../ParkingFilters'
+import { calculateDistance } from '../distance'
+import { DEFAULT_PARKING_FILTERS, hasMapbox, parkingLocation, parkingSpotsPath } from '../parkingApi'
+import { useApiResource } from '../api/useApiResource'
 import styles from './HomePage.module.css'
 
-// 15-minute time slots
-function generateTimeSlots() {
-  const slots = []
-  for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 15) {
-      const hour12 = h % 12 || 12
-      const ampm   = h < 12 ? 'AM' : 'PM'
-      const label  = `${hour12}:${String(m).padStart(2, '0')} ${ampm}`
-      const value  = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-      slots.push({ label, value })
-    }
-  }
-  return slots
-}
-const TIME_SLOTS = generateTimeSlots()
-
-const MOCK_LISTINGS = [
-  {
-    id: 1,
-    title: 'Private Driveway — Downtown',
-    address: '142 Main St, Springfield',
-    price: 8,
-    type: 'Driveway',
-    available: true,
-  },
-  {
-    id: 2,
-    title: 'Covered Spot Near Stadium',
-    address: '88 Park Ave, Springfield',
-    price: 12,
-    type: 'Covered',
-    available: true,
-  },
-  {
-    id: 3,
-    title: 'Open Lot — City Center',
-    address: '300 Elm Blvd, Springfield',
-    price: 5,
-    type: 'Lot',
-    available: false,
-  },
-  {
-    id: 4,
-    title: 'Quiet Residential Driveway',
-    address: '17 Oak Lane, Springfield',
-    price: 6,
-    type: 'Driveway',
-    available: true,
-  },
-  {
-    id: 5,
-    title: 'Garage Spot — Midtown',
-    address: '500 Commerce Dr, Springfield',
-    price: 15,
-    type: 'Garage',
-    available: true,
-  },
-  {
-    id: 6,
-    title: 'Driveway Near University',
-    address: '23 College Rd, Springfield',
-    price: 7,
-    type: 'Driveway',
-    available: true,
-  },
-]
-
-const TYPE_COLORS = {
-  Driveway: { bg: '#eff8ff', color: '#1a7fd4' },
-  Covered:  { bg: '#f0fdf4', color: '#16a34a' },
-  Lot:      { bg: '#fff7ed', color: '#ea580c' },
-  Garage:   { bg: '#faf5ff', color: '#9333ea' },
-}
+const ParkingMap = lazy(() => import('../ParkingMap'))
 
 export default function HomePage() {
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('All')
-  const [date, setDate] = useState('')
-  const [startTime, setStartTime] = useState('')
-  const [endTime, setEndTime] = useState('')
-  const [searchError, setSearchError] = useState('')
+  const [destination, setDestination] = useState(null)
+  const [filters, setFilters] = useState(DEFAULT_PARKING_FILTERS)
+  const listings = useApiResource(parkingSpotsPath(filters), { authenticated: false })
+  const query = search.trim().toLowerCase()
+  const maxDistance = filters.maxDistance === '' ? Infinity : Number(filters.maxDistance)
 
+  const filtered = (listings.data ?? [])
+    .map(spot => ({
+      ...spot,
+      distance: destination && parkingLocation(spot)
+        ? calculateDistance(destination.latitude, destination.longitude, spot.latitude, spot.longitude)
+        : null,
+    }))
+    .filter(spot => {
+      if (destination && Number.isFinite(maxDistance)) return spot.distance !== null && spot.distance <= maxDistance
+      return destination || !query || `${spot.address} ${spot.description}`.toLowerCase().includes(query)
+    })
+    .sort((a, b) => {
+      if (filters.sortBy === 'price') return a.price - b.price
+      if (destination && filters.sortBy === 'distance') return (a.distance ?? Infinity) - (b.distance ?? Infinity) || 0
+      return 0
+    })
+  const mapped = filtered.filter(parkingLocation)
 
-  const handleSearch = () => {
-    if (!search.trim()) {
-      setSearchError('Please enter a location to search.')
-      return
-    }
-    setSearchError('')
-    // TODO: pass search, date, startTime, endTime to backend API
+  function updateSearch(value) {
+    setSearch(value)
+    setDestination(null)
   }
-
-  const types = ['All', 'Driveway', 'Covered', 'Lot', 'Garage']
-
-  const filtered = MOCK_LISTINGS.filter((l) => {
-    const matchesSearch =
-      l.title.toLowerCase().includes(search.toLowerCase()) ||
-      l.address.toLowerCase().includes(search.toLowerCase())
-    const matchesFilter = filter === 'All' || l.type === filter
-    return matchesSearch && matchesFilter
-  })
 
   return (
     <div className={styles.page}>
@@ -113,78 +49,27 @@ export default function HomePage() {
       <section className={styles.hero}>
         <div className={styles.heroInner}>
           <h1 className={styles.heroTitle}>Find parking near you</h1>
-          <p className={styles.heroSub}>Search by location and date to see what's available</p>
+          <p className={styles.heroSub}>Explore active parking spots by location and price</p>
 
           <div className={styles.searchCard}>
-            {/* Row 1 — location */}
             <div className={styles.searchRow}>
               <div className={styles.searchField}>
-                <label className={styles.searchLabel}>📍 Location</label>
-                <input
-                  type="text"
-                  placeholder="Address or neighborhood…"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setSearchError('') }}
-                  className={styles.searchInput}
-                />
+                <label htmlFor="parking-search" className={styles.searchLabel}>📍 Location</label>
+                {hasMapbox ? (
+                  <DestinationSearch id="parking-search" inputClassName={styles.searchInput}
+                    placeholder="Address or neighborhood…" onQueryChange={updateSearch}
+                    onSelect={place => {
+                      setDestination(place)
+                      setSearch(place.address)
+                      setFilters(previous => ({ ...previous, sortBy: 'distance' }))
+                    }} />
+                ) : (
+                  <input id="parking-search" type="search" placeholder="Address or neighborhood…"
+                    value={search} onChange={e => updateSearch(e.target.value)} className={styles.searchInput} />
+                )}
               </div>
             </div>
-
-            {/* Row 2 — date + times */}
-            <div className={styles.searchRow}>
-              <div className={styles.searchField}>
-                <label className={styles.searchLabel}>📅 Date</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={styles.searchInput}
-                />
-              </div>
-              <div className={styles.searchDivider} />
-              <div className={styles.searchField}>
-                <label className={styles.searchLabel}>🕐 Start time</label>
-                <select
-                  value={startTime}
-                  onChange={(e) => { setStartTime(e.target.value); setEndTime('') }}
-                  className={styles.searchInput}
-                >
-                  <option value="">Any time</option>
-                  {TIME_SLOTS.map((slot) => (
-                    <option key={slot.value} value={slot.value}>{slot.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className={styles.searchDivider} />
-              <div className={styles.searchField}>
-                <label className={styles.searchLabel}>🕔 End time</label>
-                <select
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className={styles.searchInput}
-                  disabled={!startTime}
-                >
-                  <option value="">Any time</option>
-                  {TIME_SLOTS.filter((slot) => slot.value > startTime).map((slot) => {
-                    const [sh, sm] = startTime.split(':').map(Number)
-                    const [eh, em] = slot.value.split(':').map(Number)
-                    const hrs = ((eh * 60 + em) - (sh * 60 + sm)) / 60
-                    return (
-                      <option key={slot.value} value={slot.value}>
-                        {slot.label} · {hrs} hr{hrs !== 1 ? 's' : ''}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-            </div>
-
-            {searchError && (
-              <p className={styles.searchError}>{searchError}</p>
-            )}
-            <button className={styles.searchBtn} onClick={handleSearch}>
-              Search available spots
-            </button>
+            <p role="note">Choose your booking date and time on the listing page. Availability is checked when you book.</p>
           </div>
         </div>
       </section>
@@ -206,19 +91,23 @@ export default function HomePage() {
 
         {/* Section header + filters */}
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Available spots nearby</h2>
+          <h2 className={styles.sectionTitle}>Parking spots</h2>
           <div className={styles.filters}>
-            {types.map((t) => (
-              <button
-                key={t}
-                className={`${styles.filterBtn} ${filter === t ? styles.filterBtnActive : ''}`}
-                onClick={() => setFilter(t)}
-              >
-                {t}
-              </button>
-            ))}
+            <ParkingFilters filters={filters} setFilters={setFilters}
+              hasDestination={Boolean(destination)} inputClassName={styles.filterBtn} />
           </div>
         </div>
+
+        {hasMapbox && (mapped.length > 0 || destination) && (
+          <Suspense fallback={<p role="status">Loading map…</p>}>
+            <ParkingMap destination={destination} parkingSpots={mapped} />
+          </Suspense>
+        )}
+
+        {listings.loading && <p role="status">Loading parking spots…</p>}
+        {listings.error && (
+          <p role="alert">{listings.error.message} <button type="button" onClick={listings.reload}>Try again</button></p>
+        )}
 
         {/* Listings grid */}
         {filtered.length > 0 ? (
@@ -227,7 +116,7 @@ export default function HomePage() {
               <ListingCard key={listing.id} listing={listing} />
             ))}
           </div>
-        ) : (
+        ) : !listings.loading && !listings.error && (
           <div className={styles.empty}>
             <p className={styles.emptyIcon}>🔍</p>
             <p className={styles.emptyTitle}>No spots found</p>
@@ -241,7 +130,6 @@ export default function HomePage() {
 
 function ListingCard({ listing }) {
   const navigate = useNavigate()
-  const typeStyle = TYPE_COLORS[listing.type] ?? { bg: '#f1f5f9', color: '#475569' }
 
   return (
     <div
@@ -256,15 +144,9 @@ function ListingCard({ listing }) {
       </div>
 
       <div className={styles.cardBody}>
-        <span
-          className={styles.typeBadge}
-          style={{ background: typeStyle.bg, color: typeStyle.color }}
-        >
-          {listing.type}
-        </span>
-
-        <h3 className={styles.cardTitle}>{listing.title}</h3>
-        <p className={styles.cardAddress}>📍 {listing.address}</p>
+        <h3 className={styles.cardTitle}>{listing.address}</h3>
+        <p className={styles.cardAddress}>{listing.description}</p>
+        {listing.distance !== null && <p className={styles.cardAddress}>{listing.distance.toFixed(2)} miles away</p>}
 
         <div className={styles.cardFooter}>
           <span className={styles.cardPrice}>

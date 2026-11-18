@@ -45,7 +45,7 @@ def create_parking_spot(
 ):
     require_owner(user)
     with repository.transaction() as records:
-        return records.insert("parking_spots", spot.model_dump() | {"owner_id": user["id"]})
+        return records.insert("parking_spots", spot.model_dump(exclude_unset=True) | {"owner_id": user["id"]})
 
 
 @router.put("/parking-spots/{spot_id}")
@@ -60,7 +60,7 @@ def update_parking_spot(
         require_record_owner(spot, user, "owner_id")
         if updated_spot.owner_id != spot["owner_id"]:
             raise HTTPException(status_code=403, detail="Cannot change parking spot owner")
-        return records.update("parking_spots", spot_id, updated_spot.model_dump(exclude={"owner_id"}))
+        return records.update("parking_spots", spot_id, updated_spot.model_dump(exclude={"owner_id"}, exclude_unset=True))
 
 
 @router.delete("/parking-spots/{spot_id}")

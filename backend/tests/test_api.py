@@ -65,6 +65,7 @@ def test_valid_reservation(client, booking):
         'id': 1, **booking,
         'start_time': booking['start_time'] + '+00:00',
         'end_time': booking['end_time'] + '+00:00',
+        'total_cost': 40.0,
     }
     assert client.get('/reservations/1').json() == response.json()
     assert client.get('/reservations').json() == [response.json()]
@@ -151,3 +152,19 @@ def test_parking_price_filters(client, create_user, create_spot, params, expecte
     assert response.status_code == 200
     assert [spot['id'] for spot in response.json()] == expected
     assert len(client.get('/parking-spots').json()) == 4
+
+
+@pytest.mark.parametrize("coordinates", [
+    {"latitude": 40},
+    {"latitude": 40, "longitude": None},
+    {"latitude": 91, "longitude": -74},
+    {"latitude": 40, "longitude": -181},
+])
+def test_parking_coordinates_are_validated_as_a_pair(client, create_user, auth_headers, coordinates):
+    owner = create_user()
+    response = client.post("/parking-spots", headers=auth_headers(owner["id"]), json={
+        "address": "Street", "description": "Driveway", "price": 20, "available": True,
+        **coordinates,
+    })
+    assert response.status_code == 422
+    assert client.get("/parking-spots").json() == []

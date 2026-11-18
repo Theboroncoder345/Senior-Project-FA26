@@ -5,7 +5,8 @@ from datetime import timezone
 FIELDS = {
     "users": {"id": "user_id", "name": "full_name", "email": "email", "is_owner": "is_owner"},
     "parking_spots": {"id": "spot_id", "owner_id": "owner_id", "address": "address",
-                      "price": "price_per_hour", "description": "description", "available": "is_available"},
+                      "price": "price_per_hour", "description": "description", "available": "is_available",
+                      "latitude": "latitude", "longitude": "longitude"},
     "reservations": {"id": "reservation_id", "spot_id": "spot_id", "user_id": "user_id",
                      "start_time": "start_time", "end_time": "end_time"},
 }
@@ -27,4 +28,8 @@ def to_database(table, record):
 
 
 def to_api(table, row):
-    return {field: row[column] for field, column in FIELDS[table].items()}
+    result = {field: row[column] for field, column in FIELDS[table].items()
+              if field not in ("latitude", "longitude") or row.get(column) is not None}
+    if table == "reservations":
+        result["total_cost"] = row["total_cost"]
+    return result

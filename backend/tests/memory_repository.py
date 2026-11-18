@@ -46,13 +46,21 @@ class MemoryRepository:
                     raise Conflict(CONFLICTS["23P01", "reservations_no_overlap"])
         record_id = next(self.ids[table])
         row = {"id": record_id, **record}
+        if table == "reservations":
+            row["total_cost"] = total_cost
+        if table == "parking_spots":
+            row = {key: value for key, value in row.items() if value is not None}
         self.rows[table][record_id] = row
         if password_hash is not None:
             self.password_hashes[record_id] = password_hash
         return row.copy()
 
     def update(self, table, record_id, record):
-        self.rows[table][record_id].update(record)
+        row = self.rows[table][record_id]
+        row.update(record)
+        if table == "parking_spots" and row.get("latitude") is None:
+            row.pop("latitude", None)
+            row.pop("longitude", None)
         return self.get(table, record_id)
 
     def delete(self, table, record_id):
@@ -62,4 +70,7 @@ class MemoryRepository:
 
     def owner_reservations(self, owner_id):
         spot_ids = {spot["id"] for spot in self.list("parking_spots", owner_id=owner_id)}
-        return [row for row in self.list("reservations") if row["spot_id"] in spot_ids]
+        return [
+            row | {"renter_name": self.rows["users"][row["user_id"]]["name"]}
+            for row in self.list("reservations") if row["spot_id"] in spot_ids
+        ]

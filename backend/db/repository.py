@@ -101,12 +101,13 @@ class Records:
 
     def owner_reservations(self, owner_id):
         rows = self._rows(
-            """SELECT r.* FROM reservations r
+            """SELECT r.*, u.full_name AS renter_name FROM reservations r
                JOIN parking_spots s ON s.spot_id = r.spot_id
+               JOIN users u ON u.user_id = r.user_id
                WHERE s.owner_id = :owner_id ORDER BY r.reservation_id""",
             {"owner_id": owner_id},
         )
-        return [to_api("reservations", row) for row in rows]
+        return [to_api("reservations", row) | {"renter_name": row["renter_name"]} for row in rows]
 
 
 @lru_cache(maxsize=1)

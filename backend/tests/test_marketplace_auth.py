@@ -85,6 +85,7 @@ def test_authenticated_user_can_reserve_without_body_user_id(
         'id': 1, **reservation_payload, 'user_id': renter['id'],
         'start_time': reservation_payload['start_time'] + '+00:00',
         'end_time': reservation_payload['end_time'] + '+00:00',
+        'total_cost': 40.0,
     }
 
 

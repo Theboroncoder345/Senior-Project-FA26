@@ -101,14 +101,25 @@ npm ci
 npm run dev -- --host localhost --port 5173 --strictPort
 ```
 
-Open <http://localhost:5173>. Keep FastAPI running in the other terminal. The
-frontend currently calls `http://127.0.0.1:8000`; the backend permits the exact
-browser origin `http://localhost:5173` through CORS. Using a different frontend
-host or port requires a deliberate configuration change.
+Open <http://localhost:5173> with FastAPI running. The shared client defaults to
+`http://127.0.0.1:8000`. Copy `frontend/.env.example` to `frontend/.env` to
+set `VITE_API_BASE_URL` or enable maps and destination suggestions with a public
+`VITE_MAPBOX_ACCESS_TOKEN`. FastAPI allows the browser origin
+`http://localhost:5173` by default.
 
-Sign in using an account registered with the API. The existing frontend supports
-available spots, owner listing creation, booking/cancellation, and personal lists.
-There is not yet a working frontend registration form.
+Sign up in the browser for a renter account. For the demo, create a separate host
+through `POST /auth/register` with `is_owner: true`, then sign in as that host.
+The optional SQL seed owner is passwordless. Publish a listing with optional
+latitude and longitude to show it on the map. Browse and reserve from the renter
+account, view or cancel in My Bookings, and use the Host Dashboard to review
+reservations and edit or delete listings. Reservations are immediate. The
+displayed reservation total is a stored estimate of the booking cost and the
+demo has no payment or payout flow.
+
+Home supports address text, price, listing availability, and distance from a
+selected Mapbox destination. The API checks time-window conflicts at booking.
+Listings with no coordinates still appear in the list. Mapbox Search Box
+results are used only for destination search and are never persisted.
 
 ### Frontend checks
 

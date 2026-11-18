@@ -117,7 +117,9 @@ def test_me_and_legacy_lists_are_scoped_and_cannot_be_impersonated(client, recor
         response = client.get('/owners/me/parking-spots', headers=headers, params={'owner_id': 999})
         assert response.status_code == 200
         assert response.json() == [listing]
-        assert client.get(f"/owners/{records[actor]['id']}/reservations", headers=headers).json() == [reservation]
+        assert client.get(f"/owners/{records[actor]['id']}/reservations", headers=headers).json() == [
+            reservation | {"renter_name": "Test User"},
+        ]
     assert client.get('/owners/1/reservations', headers=auth_headers(records['other_owner']['id'])).status_code == 403
 
 

@@ -1,217 +1,171 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import { apiRequest } from '../api/client'
+import { useApiResource, useSignOut } from '../api/useApiResource'
 import styles from './BookingsPage.module.css'
 
-// Mock bookings — replace with real API call later
-const MOCK_BOOKINGS = [
-  {
-    id: 1,
-    listingId: 1,
-    title: 'Private Driveway — Downtown',
-    address: '142 Main St, Springfield',
-    date: '2026-11-10',
-    startTime: '09:00',
-    endTime: '12:00',
-    hours: 3,
-    price: 8,
-    status: 'confirmed',
-    host: 'James R.',
-  },
-  {
-    id: 2,
-    listingId: 5,
-    title: 'Garage Spot — Midtown',
-    address: '500 Commerce Dr, Springfield',
-    date: '2026-11-14',
-    startTime: '14:00',
-    endTime: '18:00',
-    hours: 4,
-    price: 15,
-    status: 'pending',
-    host: 'Tony M.',
-  },
-  {
-    id: 3,
-    listingId: 2,
-    title: 'Covered Spot Near Stadium',
-    address: '88 Park Ave, Springfield',
-    date: '2026-10-28',
-    startTime: '10:00',
-    endTime: '14:00',
-    hours: 4,
-    price: 12,
-    status: 'completed',
-    host: 'Maria T.',
-  },
-  {
-    id: 4,
-    listingId: 4,
-    title: 'Quiet Residential Driveway',
-    address: '17 Oak Lane, Springfield',
-    date: '2026-10-20',
-    startTime: '08:00',
-    endTime: '10:00',
-    hours: 2,
-    price: 6,
-    status: 'cancelled',
-    host: 'Sandra K.',
-  },
-]
+const TABS = ['All', 'Upcoming', 'Past']
 
-const STATUS_CONFIG = {
-  confirmed:  { label: 'Confirmed',  bg: '#f0fdf4', color: '#16a34a', dot: '#16a34a' },
-  pending:    { label: 'Pending',    bg: '#fffbeb', color: '#d97706', dot: '#f59e0b' },
-  completed:  { label: 'Completed', bg: '#f8fafc', color: '#475569', dot: '#94a3b8' },
-  cancelled:  { label: 'Cancelled', bg: '#fff5f5', color: '#ef4444', dot: '#ef4444' },
+function isPast(booking, now) {
+  return Date.parse(booking.end_time) <= now
 }
 
-const TABS = ['All', 'Upcoming', 'Completed', 'Cancelled']
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function formatTime(t) {
-  const [h, m] = t.split(':')
-  const hour = Number(h)
-  const ampm = hour >= 12 ? 'PM' : 'AM'
-  return `${hour % 12 || 12}:${m} ${ampm}`
+function formatTime(value) {
+  return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState('All')
-  const navigate = useNavigate()
+  const [pending, setPending] = useState(null)
+  const [actionError, setActionError] = useState('')
+  const [message, setMessage] = useState('')
+  const [params, setParams] = useSearchParams()
+  const selected = params.get('reservation')
+  const signOut = useSignOut()
+  const bookings = useApiResource('/users/me/reservations')
+  const detail = useApiResource(selected ? `/reservations/${encodeURIComponent(selected)}` : null)
+  const listings = useApiResource('/parking-spots', { authenticated: false })
+  const spotById = new Map(listings.data?.map(spot => [spot.id, spot]))
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [])
+  const all = bookings.data ?? []
+  const past = all.filter(booking => isPast(booking, now)).length
+  const visible = all.filter(booking =>
+    activeTab === 'All' || (activeTab === 'Past') === isPast(booking, now)
+  )
 
-  const filtered = MOCK_BOOKINGS.filter((b) => {
-    if (activeTab === 'All') return true
-    if (activeTab === 'Upcoming') return b.status === 'confirmed' || b.status === 'pending'
-    if (activeTab === 'Completed') return b.status === 'completed'
-    if (activeTab === 'Cancelled') return b.status === 'cancelled'
-    return true
-  })
+  async function cancelBooking(id) {
+    if (pending !== null || !window.confirm('Cancel this reservation?')) return
+    setPending(id)
+    setActionError('')
+    setMessage('')
+    try {
+      await apiRequest(`/reservations/${id}`, { method: 'DELETE' })
+      if (String(id) === selected) setParams({}, { replace: true })
+      bookings.reload()
+      setMessage('Reservation cancelled.')
+    } catch (error) {
+      if (error.status === 401) signOut(error.message)
+      else setActionError(error.message)
+    } finally {
+      setPending(null)
+    }
+  }
+
+  function renderBooking(booking) {
+    return (
+      <BookingCard key={booking.id} booking={booking} spot={spotById.get(booking.spot_id)}
+        past={isPast(booking, now)} onCancel={cancelBooking} pending={pending} showDetailsLink={!selected} />
+    )
+  }
 
   return (
     <div className={styles.page}>
       <Navbar />
-
       <main className={styles.main}>
         <div className={styles.header}>
           <div>
             <h1 className={styles.title}>My Bookings</h1>
-            <p className={styles.subtitle}>Track and manage all your parking reservations</p>
+            <p className={styles.subtitle}>Track and manage your parking reservations</p>
           </div>
-          <button className={styles.findBtn} onClick={() => navigate('/home')}>
-            + Find parking
-          </button>
+          <Link className={styles.findBtn} to="/home">+ Find parking</Link>
         </div>
 
-        {/* Summary cards */}
-        <div className={styles.summaryRow}>
-          <SummaryCard icon="📅" label="Upcoming" count={MOCK_BOOKINGS.filter(b => b.status === 'confirmed' || b.status === 'pending').length} color="#1a7fd4" />
-          <SummaryCard icon="✅" label="Completed" count={MOCK_BOOKINGS.filter(b => b.status === 'completed').length} color="#16a34a" />
-          <SummaryCard icon="❌" label="Cancelled" count={MOCK_BOOKINGS.filter(b => b.status === 'cancelled').length} color="#ef4444" />
-          <SummaryCard icon="💰" label="Total spent" count={`$${MOCK_BOOKINGS.filter(b => b.status === 'completed').reduce((s, b) => s + b.price * b.hours, 0)}`} color="#9333ea" />
-        </div>
+        {actionError && <p role="alert">{actionError}</p>}
+        {message && <p role="status">{message}</p>}
+        {listings.error && <p role="status">Listing addresses are temporarily unavailable.</p>}
 
-        {/* Tabs */}
-        <div className={styles.tabs}>
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Bookings list */}
-        {filtered.length > 0 ? (
-          <div className={styles.list}>
-            {filtered.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} navigate={navigate} />
-            ))}
-          </div>
+        {selected ? (
+          <>
+            <Link className={styles.viewBtn} to="/bookings">← All bookings</Link>
+            {(detail.loading || (detail.data && bookings.loading)) && <p role="status">Loading reservation…</p>}
+            {detail.error && <p role="alert">{detail.error.message}</p>}
+            {detail.data && bookings.data && (
+              all.some(booking => booking.id === detail.data.id)
+                ? <div className={styles.list}>{renderBooking(detail.data)}</div>
+                : <p role="alert">This reservation is outside your personal bookings.</p>
+            )}
+            {bookings.error && <p role="alert">{bookings.error.message}</p>}
+          </>
         ) : (
-          <div className={styles.empty}>
-            <span className={styles.emptyIcon}>📭</span>
-            <p className={styles.emptyTitle}>No bookings here</p>
-            <p className={styles.emptySub}>
-              {activeTab === 'All'
-                ? "You haven't made any bookings yet."
-                : `You have no ${activeTab.toLowerCase()} bookings.`}
-            </p>
-            <button className={styles.findBtn} onClick={() => navigate('/home')}>
-              Find parking
-            </button>
-          </div>
+          <>
+            {bookings.data && (
+              <div className={styles.summaryRow}>
+                <SummaryCard icon="📅" label="Upcoming" count={all.length - past} />
+                <SummaryCard icon="🕒" label="Past" count={past} />
+              </div>
+            )}
+            <div className={styles.tabs}>
+              {TABS.map(tab => (
+                <button key={tab} type="button" onClick={() => setActiveTab(tab)}
+                  className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}>
+                  {tab}
+                </button>
+              ))}
+            </div>
+            {bookings.loading && <p role="status">Loading bookings…</p>}
+            {bookings.error && (
+              <p role="alert">{bookings.error.message} <button type="button" onClick={bookings.reload}>Try again</button></p>
+            )}
+            {bookings.data && (visible.length > 0 ? (
+              <div className={styles.list}>{visible.map(renderBooking)}</div>
+            ) : (
+              <div className={styles.empty}>
+                <span className={styles.emptyIcon}>📭</span>
+                <p className={styles.emptyTitle}>No bookings here</p>
+                <Link className={styles.findBtn} to="/home">Find parking</Link>
+              </div>
+            ))}
+          </>
         )}
       </main>
     </div>
   )
 }
 
-function SummaryCard({ icon, label, count, color }) {
+function SummaryCard({ icon, label, count }) {
   return (
     <div className={styles.summaryCard}>
       <span className={styles.summaryIcon}>{icon}</span>
       <div>
-        <p className={styles.summaryCount} style={{ color }}>{count}</p>
+        <p className={styles.summaryCount}>{count}</p>
         <p className={styles.summaryLabel}>{label}</p>
       </div>
     </div>
   )
 }
 
-function BookingCard({ booking, navigate }) {
-  const status = STATUS_CONFIG[booking.status]
-  const total = booking.price * booking.hours
-
+function BookingCard({ booking, spot, past, onCancel, pending, showDetailsLink }) {
   return (
     <div className={styles.card}>
-      {/* Left — icon */}
       <div className={styles.cardIcon}>🅿</div>
-
-      {/* Middle — details */}
       <div className={styles.cardDetails}>
         <div className={styles.cardTop}>
-          <h3 className={styles.cardTitle}>{booking.title}</h3>
-          <span
-            className={styles.statusBadge}
-            style={{ background: status.bg, color: status.color }}
-          >
-            <span className={styles.statusDot} style={{ background: status.dot }} />
-            {status.label}
-          </span>
+          <h3 className={styles.cardTitle}>{spot?.address ?? `Parking spot #${booking.spot_id}`}</h3>
+          <span className={styles.statusBadge}>{past ? 'Past' : 'Upcoming'}</span>
         </div>
-
-        <p className={styles.cardAddress}>📍 {booking.address}</p>
-
-        <div className={styles.cardMeta}>
-          <span>📅 {formatDate(booking.date)}</span>
-          <span>🕐 {formatTime(booking.startTime)} – {formatTime(booking.endTime)}</span>
-          <span>👤 Hosted by {booking.host}</span>
-        </div>
+        <p className={styles.cardMeta}>{formatTime(booking.start_time)} – {formatTime(booking.end_time)}</p>
       </div>
-
-      {/* Right — price + actions */}
       <div className={styles.cardRight}>
-        <p className={styles.cardTotal}>${total}</p>
-        <p className={styles.cardTotalLabel}>{booking.hours} hr{booking.hours > 1 ? 's' : ''} · ${booking.price}/hr</p>
-
+        {booking.total_cost != null && (
+          <>
+            <p className={styles.cardTotal}>${Number(booking.total_cost).toFixed(2)}</p>
+            <p className={styles.cardTotalLabel}>Reservation total</p>
+          </>
+        )}
         <div className={styles.cardActions}>
-          <button
-            className={styles.viewBtn}
-            onClick={() => navigate(`/listing/${booking.listingId}`)}
-          >
-            View spot
-          </button>
-          {(booking.status === 'confirmed' || booking.status === 'pending') && (
-            <button className={styles.cancelBtn}>
-              Cancel
+          <Link className={styles.viewBtn} to={`/listing/${booking.spot_id}`}>View spot</Link>
+          {showDetailsLink && (
+            <Link className={styles.viewBtn} to={`/bookings?reservation=${booking.id}`}>Details</Link>
+          )}
+          {!past && (
+            <button type="button" className={styles.cancelBtn} disabled={pending !== null}
+              onClick={() => onCancel(booking.id)}>
+              {pending === booking.id ? 'Cancelling…' : 'Cancel'}
             </button>
           )}
         </div>

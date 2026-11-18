@@ -1,102 +1,12 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import { hasMapbox, parkingLocation } from '../parkingApi'
+import { apiRequest } from '../api/client'
+import { useApiResource, useSignOut } from '../api/useApiResource'
 import styles from './ListingPage.module.css'
 
-// Same mock data as HomePage — swap with real API call later
-const MOCK_LISTINGS = [
-  {
-    id: 1,
-    title: 'Private Driveway — Downtown',
-    address: '142 Main St, Springfield',
-    lat: 39.7817,
-    lng: -89.6501,
-    price: 8,
-    type: 'Driveway',
-    available: true,
-    description:
-      'A spacious private driveway just one block from downtown. Easy access, no tight turns. Perfect for events, work, or day trips into the city.',
-    amenities: ['Well lit', 'Easy access', 'Near transit', 'Paved surface'],
-    host: { name: 'James R.', joined: 'Sept 2026' },
-  },
-  {
-    id: 2,
-    title: 'Covered Spot Near Stadium',
-    address: '88 Park Ave, Springfield',
-    lat: 39.785,
-    lng: -89.644,
-    price: 12,
-    type: 'Covered',
-    available: true,
-    description:
-      'Covered parking spot just two blocks from the stadium. Stay dry on game days or during bad weather. Very secure neighborhood.',
-    amenities: ['Covered', 'Secure', 'Near stadium', 'Paved surface'],
-    host: { name: 'Maria T.', joined: 'Oct 2026' },
-  },
-  {
-    id: 3,
-    title: 'Open Lot — City Center',
-    address: '300 Elm Blvd, Springfield',
-    lat: 39.779,
-    lng: -89.652,
-    price: 5,
-    type: 'Lot',
-    available: false,
-    description:
-      'Open surface lot in the heart of the city. Great for quick errands or shopping. Currently unavailable — check back soon.',
-    amenities: ['High capacity', 'Central location', 'Flat surface'],
-    host: { name: 'Derek S.', joined: 'Oct 2026' },
-  },
-  {
-    id: 4,
-    title: 'Quiet Residential Driveway',
-    address: '17 Oak Lane, Springfield',
-    lat: 39.775,
-    lng: -89.661,
-    price: 6,
-    type: 'Driveway',
-    available: true,
-    description:
-      'A calm, quiet driveway on a residential street. Perfect if you need to park for a few hours without the noise of downtown.',
-    amenities: ['Quiet area', 'Easy access', 'Well lit'],
-    host: { name: 'Sandra K.', joined: 'Nov 2026' },
-  },
-  {
-    id: 5,
-    title: 'Garage Spot — Midtown',
-    address: '500 Commerce Dr, Springfield',
-    lat: 39.783,
-    lng: -89.647,
-    price: 15,
-    type: 'Garage',
-    available: true,
-    description:
-      'Indoor garage spot in midtown. Best option for overnight or long-term parking. Your car stays safe and out of the elements.',
-    amenities: ['Indoor', 'Overnight ok', 'Security camera', 'Paved surface'],
-    host: { name: 'Tony M.', joined: 'Oct 2026' },
-  },
-  {
-    id: 6,
-    title: 'Driveway Near University',
-    address: '23 College Rd, Springfield',
-    lat: 39.787,
-    lng: -89.655,
-    price: 7,
-    type: 'Driveway',
-    available: true,
-    description:
-      'Convenient driveway just a short walk from campus. Great for students, visitors, and anyone attending university events.',
-    amenities: ['Near campus', 'Well lit', 'Easy access'],
-    host: { name: 'Priya N.', joined: 'Nov 2026' },
-  },
-]
-
-const TYPE_COLORS = {
-  Driveway: { bg: '#eff8ff', color: '#1a7fd4' },
-  Covered:  { bg: '#f0fdf4', color: '#16a34a' },
-  Lot:      { bg: '#fff7ed', color: '#ea580c' },
-  Garage:   { bg: '#faf5ff', color: '#9333ea' },
-}
+const ParkingMap = lazy(() => import('../ParkingMap'))
 
 // Generate time options in 15-minute increments (12:00 AM → 11:45 PM)
 function generateTimeSlots() {
@@ -116,35 +26,61 @@ const TIME_SLOTS = generateTimeSlots()
 
 export default function ListingPage() {
   const { id } = useParams()
-  const navigate = useNavigate()
-  const listing = MOCK_LISTINGS.find((l) => l.id === Number(id))
+  return <ListingDetail key={id} id={id} />
+}
 
+function ListingDetail({ id }) {
+  const navigate = useNavigate()
+  const resource = useApiResource(`/parking-spots/${encodeURIComponent(id)}`, { authenticated: false })
+  const listing = resource.data
+  const signOut = useSignOut()
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
-  const [hours, setHours] = useState(1)
-  const [booked, setBooked] = useState(false)
+  const [booked, setBooked] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [bookingError, setBookingError] = useState('')
 
   if (!listing) {
     return (
       <div className={styles.page}>
         <Navbar />
         <div className={styles.notFound}>
-          <p className={styles.notFoundIcon}>🅿</p>
-          <h2>Listing not found</h2>
+          {resource.loading
+            ? <p role="status">Loading listing…</p>
+            : <h2 role="alert">{resource.error?.status === 404 ? 'Listing not found' : resource.error?.message}</h2>}
           <button className={styles.backBtn} onClick={() => navigate('/home')}>← Back to listings</button>
         </div>
       </div>
     )
   }
 
-  const typeStyle = TYPE_COLORS[listing.type] ?? { bg: '#f1f5f9', color: '#475569' }
-  const total = listing.price * hours
+  const start = new Date(`${date}T${startTime}`)
+  const end = new Date(`${date}T${endTime}`)
+  const hours = (end - start) / 3600000
+  const total = hours > 0 ? (listing.price * hours).toFixed(2) : null
 
-  const handleBook = (e) => {
-    e.preventDefault()
-    // TODO: POST to backend booking endpoint
-    setBooked(true)
+  async function handleBook(event) {
+    event.preventDefault()
+    if (submitting) return
+    setBookingError('')
+    if (!(hours > 0)) {
+      setBookingError('Choose a date and an end time after the start time.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const reservation = await apiRequest('/reservations', {
+        method: 'POST',
+        body: { spot_id: listing.id, start_time: start.toISOString(), end_time: end.toISOString() },
+      })
+      setBooked(reservation)
+    } catch (error) {
+      if (error.status === 401) signOut(error.message)
+      else setBookingError(error.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -161,36 +97,12 @@ export default function ListingPage() {
         {/* Title row */}
         <div className={styles.titleRow}>
           <div>
-            <div className={styles.badgeRow}>
-              <span
-                className={styles.typeBadge}
-                style={{ background: typeStyle.bg, color: typeStyle.color }}
-              >
-                {listing.type}
-              </span>
-              {!listing.available && (
-                <span className={styles.unavailableBadge}>Unavailable</span>
-              )}
-            </div>
-            <h1 className={styles.title}>{listing.title}</h1>
-            <p className={styles.address}>📍 {listing.address}</p>
+            {!listing.available && <span className={styles.unavailableBadge}>Unavailable</span>}
+            <h1 className={styles.title}>{listing.address}</h1>
           </div>
           <div className={styles.priceTag}>
             <span className={styles.priceAmount}>${listing.price}</span>
             <span className={styles.priceUnit}>/hr</span>
-          </div>
-        </div>
-
-        {/* ── Photo gallery ── */}
-        <div className={styles.gallery}>
-          <div className={styles.mainPhoto}>
-            <div className={styles.photoPlaceholder}>
-              <span className={styles.photoPlaceholderIcon}>📷</span>
-              <p className={styles.photoPlaceholderText}>Photos here</p>
-            </div>
-            {!listing.available && (
-              <div className={styles.photoOverlayBadge}>Unavailable</div>
-            )}
           </div>
         </div>
 
@@ -200,23 +112,11 @@ export default function ListingPage() {
           {/* LEFT — map + details */}
           <div className={styles.left}>
 
-            {/* ── MAP PLACEHOLDER ───────────────────────────────────
-                Your teammate's map component goes here.
-                Replace the entire .mapPlaceholder div with:
-                <MapComponent lat={listing.lat} lng={listing.lng} />
-            ──────────────────────────────────────────────────────── */}
-            <div className={styles.mapPlaceholder}>
-              <div className={styles.mapInner}>
-                <span className={styles.mapIcon}>🗺️</span>
-                <p className={styles.mapLabel}>Map coming soon</p>
-                <p className={styles.mapCoords}>
-                  {listing.lat}, {listing.lng}
-                </p>
-                <p className={styles.mapNote}>
-                  Teammate's map component will render here
-                </p>
-              </div>
-            </div>
+            {hasMapbox && parkingLocation(listing) && (
+              <Suspense fallback={<p role="status">Loading map…</p>}>
+                <ParkingMap parkingSpots={[listing]} />
+              </Suspense>
+            )}
 
             {/* About */}
             <div className={styles.section}>
@@ -224,27 +124,6 @@ export default function ListingPage() {
               <p className={styles.description}>{listing.description}</p>
             </div>
 
-            {/* Amenities */}
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Amenities</h2>
-              <div className={styles.amenities}>
-                {listing.amenities.map((a) => (
-                  <span key={a} className={styles.amenity}>✓ {a}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* Host */}
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Hosted by</h2>
-              <div className={styles.hostCard}>
-                <div className={styles.hostAvatar}>{listing.host.name[0]}</div>
-                <div>
-                  <p className={styles.hostName}>{listing.host.name}</p>
-                  <p className={styles.hostJoined}>Member since {listing.host.joined}</p>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* RIGHT — booking card */}
@@ -253,12 +132,12 @@ export default function ListingPage() {
               {booked ? (
                 <div className={styles.successState}>
                   <span className={styles.successIcon}>🎉</span>
-                  <h3 className={styles.successTitle}>Booking requested!</h3>
+                  <h3 className={styles.successTitle}>Parking reserved!</h3>
                   <p className={styles.successSub}>
-                    Your request has been sent. The host will confirm shortly.
+                    Your reservation is saved.
                   </p>
-                  <button className={styles.submitBtn} onClick={() => setBooked(false)}>
-                    Book again
+                  <button className={styles.submitBtn} onClick={() => navigate(`/bookings?reservation=${booked.id}`)}>
+                    View reservation
                   </button>
                 </div>
               ) : (
@@ -285,7 +164,7 @@ export default function ListingPage() {
                         <select
                           className={styles.input}
                           value={startTime}
-                          onChange={(e) => { setStartTime(e.target.value); setEndTime(''); setHours(1) }}
+                          onChange={(e) => { setStartTime(e.target.value); setEndTime('') }}
                           required
                         >
                           <option value="">Select a time…</option>
@@ -301,16 +180,8 @@ export default function ListingPage() {
                         <select
                           className={styles.input}
                           value={endTime}
-                          onChange={(e) => {
-                            const selected = e.target.value
-                            setEndTime(selected)
-                            if (startTime && selected) {
-                              const [sh, sm] = startTime.split(':').map(Number)
-                              const [eh, em] = selected.split(':').map(Number)
-                              const diff = (eh * 60 + em) - (sh * 60 + sm)
-                              setHours(diff / 60)
-                            }
-                          }}
+                          onChange={e => setEndTime(e.target.value)}
+                          required
                           disabled={!startTime}
                         >
                           <option value="">Select end time…</option>
@@ -328,17 +199,16 @@ export default function ListingPage() {
                         </select>
                       </div>
 
-                      <div className={styles.totalRow}>
-                        <span>Total {hours > 0 ? `(${hours} hr${hours !== 1 ? 's' : ''})` : ''}</span>
-                        <span className={styles.totalAmount}>${total}</span>
-                      </div>
-
-                      <button type="submit" className={styles.submitBtn}>
-                        Request to book
+                      {total !== null && (
+                        <div className={styles.totalRow}>
+                          <span>Estimated total</span>
+                          <span className={styles.totalAmount}>${total}</span>
+                        </div>
+                      )}
+                      {bookingError && <p role="alert">{bookingError}</p>}
+                      <button type="submit" className={styles.submitBtn} disabled={submitting}>
+                        {submitting ? 'Reserving…' : 'Reserve parking'}
                       </button>
-                      <p className={styles.bookingNote}>
-                        You won't be charged until the host confirms.
-                      </p>
                     </form>
                   ) : (
                     <div className={styles.unavailableMsg}>

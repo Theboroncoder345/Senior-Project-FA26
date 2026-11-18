@@ -378,3 +378,27 @@
   .right { position: static; }
   .summaryRow { grid-template-columns: repeat(2, 1fr); }
 }
+
+.listingEditor {
+  display: grid;
+  gap: 10px;
+}
+
+.listingEditor label {
+  display: grid;
+  gap: 4px;
+}
+
+.listingEditor label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+}
+
+.listingEditor input:not([type="checkbox"]),
+.listingEditor textarea {
+  padding: 8px;
+  width: 100%;
+  font: inherit;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ParkingSpotCreate(BaseModel):
@@ -6,6 +6,17 @@ class ParkingSpotCreate(BaseModel):
     price: float = Field(ge=0, allow_inf_nan=False)
     description: str
     available: bool
+    latitude: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    longitude: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_coordinate_pair(self):
+        if (
+            ("latitude" in self.model_fields_set) != ("longitude" in self.model_fields_set)
+            or (self.latitude is None) != (self.longitude is None)
+        ):
+            raise ValueError("Provide latitude and longitude together")
+        return self
 
     @field_validator("address", "description")
     @classmethod

@@ -1,18 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { apiRequest, clearAccessToken } from '../api/client'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { apiRequest } from '../api/client'
+import { useSignOut } from '../api/useApiResource'
 import styles from './Navbar.module.css'
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [account, setAccount] = useState(null)
   const [accountError, setAccountError] = useState('')
-  const navigate = useNavigate()
-
-  const signOut = useCallback((sessionMessage = '') => {
-    clearAccessToken()
-    navigate('/login', { replace: true, state: { sessionMessage } })
-  }, [navigate])
+  const signOut = useSignOut()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -78,9 +74,6 @@ export default function Navbar() {
                   : <p className={styles.dropdownEmail} role="status">{accountError || 'Checking your login…'}</p>}
               </div>
               <div className={styles.dropdownDivider} />
-              <Link to="/profile" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
-                👤 My Profile
-              </Link>
               <Link to="/bookings" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
                 📅 My Bookings
               </Link>

@@ -1,23 +1,22 @@
-const API_URL = import.meta.env.VITE_API_BASE_URL;
+export const hasMapbox = Boolean(import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim())
 
-export async function searchParking(params) {
-  const query = new URLSearchParams();
+export function parkingLocation(spot) {
+  return Number.isFinite(spot?.latitude) && Number.isFinite(spot?.longitude)
+    ? { latitude: spot.latitude, longitude: spot.longitude }
+    : null
+}
 
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== "" && value !== null && value !== undefined) {
-      query.append(key, value);
-    }
-  });
+export function parkingSpotsPath({ maxPrice = '', available = '' } = {}) {
+  const query = new URLSearchParams()
+  if (maxPrice !== '' && Number(maxPrice) >= 0) query.set('max_price', maxPrice)
+  if (available !== '') query.set('available', available)
+  const suffix = query.toString()
+  return suffix ? `/parking-spots?${suffix}` : '/parking-spots'
+}
 
-  const response = await fetch(
-    `${API_URL}/parking/search?${query.toString()}`
-  );
-
-  if (!response.ok) {
-    throw new Error(`Parking search failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  return data.parking_spots;
+export const DEFAULT_PARKING_FILTERS = {
+  maxPrice: '',
+  maxDistance: '',
+  available: 'true',
+  sortBy: '',
 }

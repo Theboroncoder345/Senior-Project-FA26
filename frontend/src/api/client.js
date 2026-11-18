@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:8000'
+const API_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || 'http://127.0.0.1:8000').replace(/\/+$/, '')
 
 export class ApiError extends Error {
   constructor(message, status) {
@@ -48,13 +48,13 @@ export async function apiRequest(path, { body, authenticated = true, ...options 
   }
   if (!response.ok) {
     const messages = {
-      401: 'Your session has expired. Please sign in again.',
+      401: authenticated ? 'Your session has expired. Please sign in again.' : 'Invalid email or password.',
       403: 'You do not have permission to perform this action.',
       404: 'This parking spot or reservation no longer exists. Please refresh.',
       409: typeof data?.detail === 'string' ? data.detail : 'This action conflicts with an existing booking.',
       422: 'Please check the form fields and reservation times.',
     }
-    if (response.status === 401 && !options.signal?.aborted) clearAccessToken()
+    if (authenticated && response.status === 401 && !options.signal?.aborted) clearAccessToken()
     throw new ApiError(messages[response.status] || 'The server could not complete the request. Please try again.', response.status)
   }
   if (data === undefined) throw new ApiError('The server returned an unexpected response. Please try again.', 0)

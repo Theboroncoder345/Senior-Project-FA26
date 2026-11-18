@@ -1,110 +1,61 @@
-import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+import { useEffect, useRef, useState } from 'react'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 
 export default function ParkingMap({ destination, parkingSpots }) {
-  const mapContainer = useRef(null);
-  const mapInstance = useRef(null);
-  const markers = useRef([]);
+  const container = useRef(null)
+  const [map, setMap] = useState(null)
+  const [error, setError] = useState(false)
+  const initialLocation = useRef(destination ?? parkingSpots[0])
 
-  const [mapReady, setMapReady] = useState(false);
-
-  // Initialize map once
   useEffect(() => {
-    if (!mapContainer.current || mapInstance.current) return;
+    const location = initialLocation.current
+    if (!location) return
+    let instance
+    try {
+      instance = new mapboxgl.Map({
+        accessToken: import.meta.env.VITE_MAPBOX_ACCESS_TOKEN,
+        container: container.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [location.longitude, location.latitude],
+        zoom: 14,
+      })
+    } catch {
+      queueMicrotask(() => {
+        if (container.current) setError(true)
+      })
+      return
+    }
+    instance.addControl(new mapboxgl.NavigationControl())
+    instance.once('load', () => {
+      setMap(instance)
+      setError(false)
+    })
+    instance.on('error', () => {
+      if (!instance.loaded()) setError(true)
+    })
+    return () => instance.remove()
+  }, [])
 
-    const map = new mapboxgl.Map({
-      accessToken: import.meta.env.VITE_MAPBOX_TOKEN,
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [-74.0745, 40.8135],
-      zoom: 14,
-    });
-
-    mapInstance.current = map;
-
-    map.addControl(new mapboxgl.NavigationControl());
-
-    map.on("load", () => {
-      setMapReady(true);
-    });
-    
-    map.on("error", (event) => {
-      console.error("Mapbox error:", event.error);
-    });
-
-    return () => {
-      markers.current.forEach((marker) => marker.remove());
-      markers.current = [];
-
-      map.remove();
-      mapInstance.current = null;
-      setMapReady(false);
-    };
-  }, []);
-
-  // Move map when destination changes
   useEffect(() => {
-    if (!mapReady || !destination) return;
-
-    mapInstance.current.flyTo({
-      center: [
-        destination.longitude,
-        destination.latitude,
-      ],
-      zoom: 14,
-      duration: 1500,
-    });
-  }, [destination, mapReady]);
-
-  // Update markers when filtered parking spots change
-  useEffect(() => {
-    if (!mapReady) return;
-
-    const map = mapInstance.current;
-
-    // Remove old markers
-    markers.current.forEach((marker) => marker.remove());
-    markers.current = [];
-
-    // Create markers for current results
-    parkingSpots.forEach((spot) => {
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div>
-          <h3>${spot.title}</h3>
-          <p><strong>$${spot.price}</strong> / hour</p>
-          <p>Type: ${spot.parkingType}</p>
-          <p>Covered: ${spot.covered ? "Yes" : "No"}</p>
-          <p>EV Charging: ${spot.evCharging ? "Yes" : "No"}</p>
-          ${
-            spot.distance !== null
-              ? `<p>${spot.distance.toFixed(2)} miles away</p>`
-              : ""
-          }
-        </div>
-      `);
-
-      const marker = new mapboxgl.Marker()
-        .setLngLat([spot.longitude, spot.latitude])
-        .setPopup(popup)
-        .addTo(map);
-
-      markers.current.push(marker);
-    });
-  }, [parkingSpots, mapReady]);
+    if (!map) return
+    const bounds = new mapboxgl.LngLatBounds()
+    const markers = parkingSpots.map(spot => {
+      const coordinates = [spot.longitude, spot.latitude]
+      bounds.extend(coordinates)
+      const popup = new mapboxgl.Popup({ offset: 25 })
+        .setText(`${spot.address} · $${spot.price}/hr`)
+      return new mapboxgl.Marker().setLngLat(coordinates).setPopup(popup).addTo(map)
+    })
+    if (destination) bounds.extend([destination.longitude, destination.latitude])
+    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 0 })
+    return () => markers.forEach(marker => marker.remove())
+  }, [destination, map, parkingSpots])
 
   return (
-    <div
-      ref={mapContainer}
-      style={{
-        width: "100%",
-        height: "600px",
-        minHeight: "450px",
-        borderRadius: "8px",
-        overflow: "hidden",
-      }}
-    />
-  );
+    <>
+      {error && <p role="status">The map is temporarily unavailable.</p>}
+      <div ref={container} aria-label="Parking map" style={{ width: '100%', height: 360, borderRadius: 8 }} />
+    </>
+  )
 }

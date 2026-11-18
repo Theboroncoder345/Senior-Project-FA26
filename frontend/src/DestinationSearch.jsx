@@ -2,20 +2,18 @@ import { useEffect, useState } from "react";
 
 const ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-export default function DestinationSearch({ onSelect }) {
+export default function DestinationSearch({ onSelect, onQueryChange, inputClassName, id, placeholder = "Enter a destination..." }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedQuery, setSelectedQuery] = useState("");
 
   // Mapbox Search Box session
-  const [sessionToken] = useState(() => crypto.randomUUID());
+  const [sessionToken, setSessionToken] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
-    if (query.trim().length < 3) {
-      setSuggestions([]);
-      setLoading(false);
-      return;
-    }
+    if (query.trim().length < 3 || query === selectedQuery) return;
 
     const controller = new AbortController();
 
@@ -44,7 +42,7 @@ export default function DestinationSearch({ onSelect }) {
         setSuggestions(data.suggestions || []);
       } catch (error) {
         if (error.name !== "AbortError") {
-          console.error("Destination search error:", error);
+          setError("Address suggestions are unavailable. You can still enter an address.");
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -57,7 +55,7 @@ export default function DestinationSearch({ onSelect }) {
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [query, sessionToken]);
+  }, [query, selectedQuery, sessionToken]);
 
   async function selectDestination(suggestion) {
     try {
@@ -81,44 +79,41 @@ export default function DestinationSearch({ onSelect }) {
 
       const [longitude, latitude] = feature.geometry.coordinates;
 
-      onSelect({
-        name: suggestion.name,
-        address:
-          suggestion.full_address ||
-          suggestion.place_formatted ||
-          suggestion.name,
-        longitude,
-        latitude,
-      });
+      const address = feature.properties?.full_address || suggestion.full_address
+        || [suggestion.name, suggestion.place_formatted].filter(Boolean).join(", ");
+      onSelect({ name: suggestion.name, address, longitude, latitude });
 
-      setQuery(
-        suggestion.full_address || 
-        suggestion.name
-      );
-
+      setQuery(address);
+      setSelectedQuery(address);
+      setSessionToken(crypto.randomUUID());
       setSuggestions([]);
-    } catch (error) {
-      console.error("Destination selection error:", error);
+      setLoading(false);
+      setError("");
+    } catch {
+      setError("Could not select that address. You can still enter it manually.");
     }
   }
 
   return (
     <div style={{ position: "relative", width: "100%" }}>
       <input
+        id={id}
         type="text"
-        placeholder="Enter a destination..."
+        className={inputClassName}
+        placeholder={placeholder}
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "12px",
-          borderRadius: "8px",
-          border: "1px solid #ccc",
-          boxSizing: "border-box",
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setSelectedQuery("");
+          setLoading(false);
+          setSuggestions([]);
+          setError("");
+          onQueryChange?.(e.target.value);
         }}
       />
 
-      {loading && <p>Searching...</p>}
+      {loading && <p role="status">Searching...</p>}
+      {error && <p role="status">{error}</p>}
 
       {suggestions.length > 0 && (
         <div

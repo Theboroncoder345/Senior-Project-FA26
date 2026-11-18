@@ -62,7 +62,12 @@ Keep credentials in local configuration.
   Later listing price changes leave existing totals intact. Totals that round
   above `99,999,999.99` return HTTP 422 because `total_cost` is `numeric(10,2)`.
   Existing totals, including any historical NULL values, are left as stored.
-  `total_cost` is database-only.
+  Authorized reservation responses include `total_cost`. The owner-specific
+  reservation list also includes `renter_name` for reservations on that owner's
+  spots. It contains no renter email or other contact fields.
+- Parking-spot responses include stored coordinates when present. Owners can
+  supply a valid latitude and longitude pair on create or update. Updates
+  that omit the pair preserve it. Sending both coordinates as null removes it.
 - Records created by the previous in-memory implementation are outside this
   migration. The API uses the data already in PostgreSQL and writes new records there.
 

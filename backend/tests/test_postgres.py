@@ -107,11 +107,13 @@ def test_registration_and_records_survive_connection_and_session_reset(
 
     listing = client.post("/parking-spots", headers=owner_headers, json={
         "address": "123 Test Street", "description": "Driveway", "price": 12.35,
-        "available": True, "owner_id": renter["id"],
+        "available": True, "owner_id": renter["id"], "latitude": 40.1, "longitude": -74.5,
     })
     assert listing.status_code == 200
     spot = listing.json()
     assert spot["owner_id"] == owner["id"]
+    assert (spot["latitude"], spot["longitude"]) == (40.1, -74.5)
+    assert client.get(f"/parking-spots/{spot['id']}").json() == spot
     response = client.post("/reservations", headers=renter_headers, json={
         "spot_id": spot["id"], "user_id": owner["id"],
         "start_time": "2026-11-02T05:00:00-05:00", "end_time": "2026-11-02T06:30:00-05:00",
@@ -119,6 +121,16 @@ def test_registration_and_records_survive_connection_and_session_reset(
     assert response.status_code == 200
     reservation = response.json()
     assert reservation["user_id"] == renter["id"]
+    assert reservation["total_cost"] == 18.53
+    assert "renter_name" not in reservation
+
+    # Editing an older client payload preserves the coordinates and booking price.
+    update = {key: spot[key] for key in ("address", "description", "available", "owner_id")}
+    updated = client.put(f"/parking-spots/{spot['id']}", headers=owner_headers, json=update | {"price": 50})
+    assert updated.status_code == 200
+    spot = spot | {"price": 50}
+    assert updated.json() == spot
+    assert client.get(f"/reservations/{reservation['id']}", headers=renter_headers).json() == reservation
     assert reservation["start_time"] == "2026-11-02T10:00:00+00:00"
 
     engine, _ = postgres
@@ -140,7 +152,9 @@ def test_registration_and_records_survive_connection_and_session_reset(
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
     assert client.get("/auth/me", headers=headers).json() == owner
     assert client.get("/owners/me/parking-spots", headers=headers).json() == [spot]
-    assert client.get(f"/owners/{owner['id']}/reservations", headers=headers).json() == [reservation]
+    assert client.get(f"/owners/{owner['id']}/reservations", headers=headers).json() == [
+        reservation | {"renter_name": renter["name"]},
+    ]
     assert client.delete(f"/reservations/{reservation['id']}", headers=headers).status_code == 403
 
 
