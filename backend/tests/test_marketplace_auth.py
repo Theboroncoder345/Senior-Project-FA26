@@ -16,8 +16,8 @@ def spot_payload():
 def reservation_payload():
     return {
         'spot_id': 1,
-        'start_time': '2026-11-02T10:00:00',
-        'end_time': '2026-11-02T12:00:00',
+        'start_time': '2099-11-02T10:00:00',
+        'end_time': '2099-11-02T12:00:00',
     }
 
 
@@ -85,7 +85,7 @@ def test_authenticated_user_can_reserve_without_body_user_id(
         'id': 1, **reservation_payload, 'user_id': renter['id'],
         'start_time': reservation_payload['start_time'] + '+00:00',
         'end_time': reservation_payload['end_time'] + '+00:00',
-        'total_cost': 40.0,
+        'total_cost': 40.0, 'status': 'active',
     }
 
 

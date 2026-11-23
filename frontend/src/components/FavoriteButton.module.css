@@ -1,0 +1,14 @@
+.control { display: flex; align-items: center; gap: .5rem; }
+.button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #a22248;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.button:disabled { opacity: .5; }

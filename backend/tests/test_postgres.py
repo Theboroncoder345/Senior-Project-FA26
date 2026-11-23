@@ -116,7 +116,7 @@ def test_registration_and_records_survive_connection_and_session_reset(
     assert client.get(f"/parking-spots/{spot['id']}").json() == spot
     response = client.post("/reservations", headers=renter_headers, json={
         "spot_id": spot["id"], "user_id": owner["id"],
-        "start_time": "2026-11-02T05:00:00-05:00", "end_time": "2026-11-02T06:30:00-05:00",
+        "start_time": "2099-11-02T05:00:00-05:00", "end_time": "2099-11-02T06:30:00-05:00",
     })
     assert response.status_code == 200
     reservation = response.json()
@@ -131,7 +131,7 @@ def test_registration_and_records_survive_connection_and_session_reset(
     spot = spot | {"price": 50}
     assert updated.json() == spot
     assert client.get(f"/reservations/{reservation['id']}", headers=renter_headers).json() == reservation
-    assert reservation["start_time"] == "2026-11-02T10:00:00+00:00"
+    assert reservation["start_time"] == "2099-11-02T10:00:00+00:00"
 
     engine, _ = postgres
     with engine.connect() as connection:
@@ -178,7 +178,7 @@ def test_concurrent_bookings_and_rollback(client, booking, auth_headers):
     assert blocked.status_code == 409
     assert blocked.json() == {"detail": "Cannot delete a parking spot with reservations"}
     assert client.post("/reservations", json=booking | {
-        "start_time": booking["end_time"], "end_time": "2026-11-02T13:00:00",
+        "start_time": booking["end_time"], "end_time": "2099-11-02T13:00:00",
     }).status_code == 200
     assert client.delete(f"/reservations/{first['id']}").status_code == 200
     assert client.post("/reservations", json=booking).status_code == 200
@@ -198,8 +198,8 @@ def test_time_window_search_in_postgres(client, booking, create_spot, start, end
     other = create_spot(1)
     create_spot(1, available=False)
     response = client.get("/parking-spots", params={
-        "start_time": f"2026-11-02T{start}:00Z",
-        "end_time": f"2026-11-02T{end}:00Z",
+        "start_time": f"2099-11-02T{start}:00Z",
+        "end_time": f"2099-11-02T{end}:00Z",
         "available": True, "owner_id": 1, "min_price": 20, "max_price": 20,
     })
     assert response.status_code == 200
@@ -242,3 +242,44 @@ def test_become_host_persists_across_connections(client, signed_in, postgres):
     engine.dispose()
     assert client.get("/auth/me", headers=headers).json() == user | {"is_owner": True}
     assert client.get("/owners/me/parking-spots", headers=headers).json() == []
+
+
+def test_favorites_persist_unique_and_cascade(client, postgres, create_user, create_spot, auth_headers):
+    engine, _ = postgres
+    owner = create_user()
+    renter = create_user("favorite-renter@example.com", is_owner=False)
+    spot = create_spot(owner["id"], amenities=["EV Charging"])
+    owner_headers, renter_headers = auth_headers(owner["id"]), auth_headers(renter["id"])
+    root = "/users/me/favorites"
+    path = f"{root}/{spot['id']}"
+    for headers in (renter_headers, renter_headers, owner_headers):
+        assert client.put(path, headers=headers).status_code == 200
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT count(*) FROM favorites")) == 2
+    assert client.delete(path, headers=owner_headers).status_code == 200
+    engine.dispose()
+    assert client.get(root, headers=renter_headers).json() == [spot]
+    assert client.get(root, headers=owner_headers).json() == []
+    assert client.delete(f"/parking-spots/{spot['id']}", headers=owner_headers).status_code == 200
+    assert client.get(root, headers=renter_headers).json() == []
+
+
+def test_marketplace_migration_preserves_bookings_and_releases_cancelled_window(client, postgres, booking):
+    engine, run_script = postgres
+    reservation = client.post("/reservations", json=booking).json()
+    with engine.begin() as connection:
+        connection.exec_driver_sql("DROP TABLE favorites")
+        connection.exec_driver_sql("ALTER TABLE parking_spots DROP COLUMN amenities")
+        connection.exec_driver_sql("ALTER TABLE reservations DROP CONSTRAINT reservations_no_overlap, DROP COLUMN status")
+        connection.exec_driver_sql("""ALTER TABLE reservations ADD CONSTRAINT reservations_no_overlap
+            EXCLUDE USING gist (spot_id WITH =, tstzrange(start_time, end_time, '[)') WITH &&)""")
+    for _ in range(2):
+        run_script("migrations/002_marketplace_features.sql")
+    path = f"/reservations/{reservation['id']}"
+    assert client.get(path).json() == reservation
+    assert client.delete(path).status_code == 200
+    assert client.get(path).json() == reservation | {"status": "cancelled"}
+    params = {key: booking[key] for key in ("start_time", "end_time")}
+    assert [spot["id"] for spot in client.get("/parking-spots", params=params).json()] == [booking["spot_id"]]
+    assert client.post("/reservations", json=booking).status_code == 200
+    assert client.post("/reservations", json=booking).status_code == 409

@@ -63,8 +63,11 @@ def delete_reservation(
     with repository.transaction() as records:
         reservation = require_reservation(records.get("reservations", reservation_id, lock=True))
         require_record_owner(reservation, user, "user_id")
-        records.delete("reservations", reservation_id)
-    return {"message": "Reservation deleted"}
+        if reservation["status"] == "completed":
+            raise HTTPException(409, "Completed reservations cannot be cancelled")
+        if reservation["status"] == "active":
+            records.update("reservations", reservation_id, {"status": "cancelled"})
+    return {"message": "Reservation cancelled"}
 
 
 @router.post("/reservations")

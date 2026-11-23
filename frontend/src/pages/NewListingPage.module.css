@@ -269,56 +269,6 @@
   border-left: 1.5px solid var(--gray-200);
 }
 
-/* Amenities */
-.amenitiesGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.amenityChip {
-  padding: 0.45rem 0.9rem;
-  border: 1.5px solid var(--gray-200);
-  border-radius: 999px;
-  background: var(--white);
-  color: var(--gray-600);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-}
-.amenityChip:hover {
-  border-color: var(--blue-400);
-  color: var(--blue-600);
-  background: var(--blue-50);
-}
-.amenityChipActive {
-  border-color: var(--blue-500) !important;
-  background: var(--blue-50) !important;
-  color: var(--blue-600) !important;
-}
-
-/* Photo upload placeholder */
-.photoUpload {
-  border: 2px dashed var(--gray-200);
-  border-radius: 14px;
-  padding: 2.5rem 1.5rem;
-  text-align: center;
-  background: var(--gray-50);
-}
-.photoUploadIcon { font-size: 2.5rem; display: block; margin-bottom: 0.6rem; }
-.photoUploadTitle {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--gray-600);
-  margin: 0 0 0.35rem;
-}
-.photoUploadSub {
-  font-size: 0.82rem;
-  color: var(--gray-400);
-  margin: 0;
-}
-
 /* Summary */
 .summary {
   background: var(--gray-50);

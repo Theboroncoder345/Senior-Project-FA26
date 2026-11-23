@@ -1,0 +1,35 @@
+.editor {
+  display: grid;
+  gap: .5rem;
+  min-width: 0;
+  padding: .85rem;
+  border: 1px solid #ccd6e3;
+  border-radius: .65rem;
+}
+.editor label, .editor input {
+  display: block;
+  width: 100%;
+}
+.editor button {
+  justify-self: start;
+  padding: .35rem .65rem;
+  border-radius: .35rem;
+  border: 1px solid #ccd6e3;
+  background: #f1f5f9;
+  color: #18314c;
+}
+.editor [role="alert"] { color: #a42929; }
+.previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: .5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.preview {
+  height: 5rem;
+  overflow: hidden;
+  border-radius: .35rem;
+  margin-bottom: .25rem;
+}

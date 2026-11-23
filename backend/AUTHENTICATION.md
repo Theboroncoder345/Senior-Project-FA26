@@ -71,6 +71,10 @@ All existing endpoint paths are preserved.
 | `POST /parking-spots` | Authenticated registered owner; token supplies owner ID |
 | `PUT /parking-spots/{spot_id}` | Only the listing's owner; ownership cannot change |
 | `DELETE /parking-spots/{spot_id}` | Only the listing's owner; reservations block deletion |
+| `POST /parking-photos` | Authenticated registered owner |
+| `GET /users/me/favorites` | Authenticated, lists the caller's saved parking |
+| `PUT /users/me/favorites/{spot_id}` | Authenticated, saves the listing for the caller |
+| `DELETE /users/me/favorites/{spot_id}` | Authenticated, removes the listing from the caller's saved parking |
 | `GET /owners/me/parking-spots` | Registered owner; only their listings |
 | `POST /reservations` | Any authenticated user; token supplies booking user ID |
 | `GET /reservations` | Authenticated; only the caller's bookings |
@@ -78,7 +82,7 @@ All existing endpoint paths are preserved.
 | `GET /users/{user_id}/reservations` | Authenticated; path user must be the caller |
 | `GET /owners/{owner_id}/reservations` | Authenticated registered owner; path owner must be the caller |
 | `GET /reservations/{reservation_id}` | Booking creator or registered owner of the booked spot |
-| `DELETE /reservations/{reservation_id}` | Only the booking creator, including when another user owns the spot |
+| `DELETE /reservations/{reservation_id}` | Only the booking creator can cancel |
 
 The legacy list routes are protected to prevent bypassing detail-route permissions.
 `GET /reservations` returns only bookings made by the caller; owners use their
@@ -143,7 +147,7 @@ route returns **403** for authenticated non-owners.
 curl -X POST http://127.0.0.1:8000/reservations \
   -H "Authorization: Bearer $RENTER_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"spot_id":3,"start_time":"2026-11-02T10:00:00","end_time":"2026-11-02T11:00:00"}'
+  -d '{"spot_id":3,"start_time":"2099-11-02T10:00:00","end_time":"2099-11-02T11:00:00"}'
 
 curl http://127.0.0.1:8000/reservations/1 \
   -H "Authorization: Bearer $RENTER_TOKEN"
@@ -154,9 +158,11 @@ curl -X DELETE http://127.0.0.1:8000/reservations/1 \
 
 Creation returns **200** with the authenticated user's `user_id`; legacy body
 `user_id` values are ignored. The booking creator and booked spot's registered
-owner can read the detail. Only the creator can cancel, returning **200** with
-`{"message":"Reservation deleted"}`. Cancellation does not change the listing's
-`available` flag; it removes the booking that blocked its time interval.
+owner can read the detail. Only the booking creator can cancel an active reservation, returning **200** with
+`{"message":"Reservation cancelled"}`. Cancellation retains the record and
+releases its time interval. Repeating cancellation returns the same successful
+response. The API classifies finished bookings as completed using their end
+time and returns **409** for attempts to cancel completed bookings.
 
 ## Status codes and preserved validation
 

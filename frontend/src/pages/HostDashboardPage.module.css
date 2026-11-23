@@ -384,6 +384,7 @@
   gap: 10px;
 }
 
+.addressField,
 .listingEditor label {
   display: grid;
   gap: 4px;
@@ -401,4 +402,11 @@
   font: inherit;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
+}
+
+.listingCover {
+  height: 7rem;
+  border-radius: .5rem;
+  overflow: hidden;
+  margin-bottom: .5rem;
 }

@@ -77,16 +77,25 @@ WITH listings (area, slot, title, location, latitude, longitude, price, descript
 ), demo_listings AS (
     SELECT u.user_id AS owner_id, l.*,
            'Classroom demo [' || l.area || '-' || l.slot || '] - ' || l.location AS address,
-           'https://placehold.co/640x420/' || h.color || '/FFFFFF/png?text=Demo+' || l.image_label AS photo_url
+           CASE WHEN l.parking_type = 'Driveway' THEN '/demo-assets/driveway.jpg'
+                ELSE 'https://placehold.co/640x420/' || h.color || '/FFFFFF/png?text=Demo+' || l.image_label
+           END AS photo_url
     FROM listings l
     JOIN demo_hosts h USING (area)
     JOIN public.users u ON u.email_key = h.email
 )
 INSERT INTO public.parking_spots
-    (owner_id, title, address, latitude, longitude, price_per_hour, description, parking_type, is_available, photo_urls)
+    (owner_id, title, address, latitude, longitude, price_per_hour, description, parking_type, is_available, photo_urls, amenities)
 SELECT owner_id, 'Demo: ' || title, address, latitude, longitude, price,
        'Fictional classroom listing. No parking is offered at this location. ' || description,
-       parking_type, available, ARRAY[photo_url]
+       parking_type, available, ARRAY[photo_url],
+       CASE
+           WHEN area = 'airport' AND slot = 1 THEN ARRAY['Covered', 'Overnight Parking']
+           WHEN area = 'airport' AND slot = 2 THEN ARRAY['Overnight Parking']
+           WHEN parking_type IN ('Garage', 'Covered Parking') THEN ARRAY['Covered']
+           WHEN (area, slot) IN (('pnc', 2), ('metlife', 1)) THEN ARRAY['Large Vehicle Friendly']
+           ELSE ARRAY[]::text[]
+       END
 FROM demo_listings d
 WHERE NOT EXISTS (
     SELECT 1 FROM public.parking_spots s

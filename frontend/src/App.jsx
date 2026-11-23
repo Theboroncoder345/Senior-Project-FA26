@@ -7,6 +7,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import BookingsPage from './pages/BookingsPage'
 import HostDashboardPage from './pages/HostDashboardPage'
 import NewListingPage from './pages/NewListingPage'
+import SavedPage from './pages/SavedPage'
 import ProfilePage from './pages/ProfilePage'
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
       <Route path="/home"             element={<HomePage />} />
       <Route path="/listing/:id"      element={<ListingPage />} />
       <Route path="/bookings"         element={<BookingsPage />} />
+      <Route path="/saved"            element={<SavedPage />} />
       <Route path="/profile"          element={<ProfilePage />} />
       <Route path="/host"             element={<HostDashboardPage />} />
       <Route path="/listings/new"     element={<NewListingPage />} />

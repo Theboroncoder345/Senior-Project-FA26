@@ -5,10 +5,11 @@ import { apiRequest } from '../api/client'
 import { useApiResource, useSignOut } from '../api/useApiResource'
 import styles from './BookingsPage.module.css'
 
-const TABS = ['All', 'Upcoming', 'Past']
+const TABS = ['All', 'Upcoming', 'Past', 'Cancelled']
 
-function isPast(booking, now) {
-  return Date.parse(booking.end_time) <= now
+function bookingGroup(booking, now) {
+  if (booking.status === 'cancelled') return 'Cancelled'
+  return booking.status === 'completed' || Date.parse(booking.end_time) <= now ? 'Past' : 'Upcoming'
 }
 
 function formatTime(value) {
@@ -33,9 +34,9 @@ export default function BookingsPage() {
     return () => clearInterval(timer)
   }, [])
   const all = bookings.data ?? []
-  const past = all.filter(booking => isPast(booking, now)).length
+  const groups = TABS.slice(1).map(tab => [tab, all.filter(booking => bookingGroup(booking, now) === tab).length])
   const visible = all.filter(booking =>
-    activeTab === 'All' || (activeTab === 'Past') === isPast(booking, now)
+    activeTab === 'All' || bookingGroup(booking, now) === activeTab
   )
 
   async function cancelBooking(id) {
@@ -59,7 +60,7 @@ export default function BookingsPage() {
   function renderBooking(booking) {
     return (
       <BookingCard key={booking.id} booking={booking} spot={spotById.get(booking.spot_id)}
-        past={isPast(booking, now)} onCancel={cancelBooking} pending={pending} showDetailsLink={!selected} />
+        group={bookingGroup(booking, now)} onCancel={cancelBooking} pending={pending} showDetailsLink={!selected} />
     )
   }
 
@@ -95,8 +96,7 @@ export default function BookingsPage() {
           <>
             {bookings.data && (
               <div className={styles.summaryRow}>
-                <SummaryCard icon="📅" label="Upcoming" count={all.length - past} />
-                <SummaryCard icon="🕒" label="Past" count={past} />
+                {groups.map(([group, count]) => <SummaryCard key={group} label={group} count={count} />)}
               </div>
             )}
             <div className={styles.tabs}>
@@ -127,10 +127,9 @@ export default function BookingsPage() {
   )
 }
 
-function SummaryCard({ icon, label, count }) {
+function SummaryCard({ label, count }) {
   return (
     <div className={styles.summaryCard}>
-      <span className={styles.summaryIcon}>{icon}</span>
       <div>
         <p className={styles.summaryCount}>{count}</p>
         <p className={styles.summaryLabel}>{label}</p>
@@ -139,14 +138,14 @@ function SummaryCard({ icon, label, count }) {
   )
 }
 
-function BookingCard({ booking, spot, past, onCancel, pending, showDetailsLink }) {
+function BookingCard({ booking, spot, group, onCancel, pending, showDetailsLink }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardIcon}>🅿</div>
       <div className={styles.cardDetails}>
         <div className={styles.cardTop}>
           <h3 className={styles.cardTitle}>{spot?.address ?? `Parking spot #${booking.spot_id}`}</h3>
-          <span className={styles.statusBadge}>{past ? 'Past' : 'Upcoming'}</span>
+          <span className={styles.statusBadge}>{group}</span>
         </div>
         <p className={styles.cardMeta}>{formatTime(booking.start_time)} – {formatTime(booking.end_time)}</p>
       </div>
@@ -162,7 +161,7 @@ function BookingCard({ booking, spot, past, onCancel, pending, showDetailsLink }
           {showDetailsLink && (
             <Link className={styles.viewBtn} to={`/bookings?reservation=${booking.id}`}>Details</Link>
           )}
-          {!past && (
+          {group === 'Upcoming' && (
             <button type="button" className={styles.cancelBtn} disabled={pending !== null}
               onClick={() => onCancel(booking.id)}>
               {pending === booking.id ? 'Cancelling…' : 'Cancel'}

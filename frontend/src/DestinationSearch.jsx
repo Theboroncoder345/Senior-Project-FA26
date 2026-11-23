@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { mapboxAccessToken } from './parkingApi'
+import { listingAddresses } from './api/listingAddresses'
 import styles from './DestinationSearch.module.css'
 
 const MIN_QUERY_LENGTH = 3
@@ -18,13 +19,15 @@ async function searchBox(path, sessionToken, signal, params = {}) {
 
 export default function DestinationSearch({
   onSelect, onQueryChange, inputClassName, id, placeholder = 'Enter a destination...',
+  value, name, required, maxLength, listingAddress = false,
 }) {
   const listId = useId()
   const root = useRef(null)
   const retrieval = useRef(null)
   const [sessionToken, setSessionToken] = useState(() => crypto.randomUUID())
-  const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState(false)
+  const [input, setInput] = useState('')
+  const query = value ?? input
+  const [selected, setSelected] = useState(() => Boolean(value))
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [result, setResult] = useState(null)
@@ -43,11 +46,13 @@ export default function DestinationSearch({
     const controller = new AbortController()
     const timeout = setTimeout(async () => {
       try {
-        const data = await searchBox('suggest', sessionToken, controller.signal, {
-          q: searchQuery, limit: '5',
-        })
+        const suggestions = listingAddress
+          ? await listingAddresses(searchQuery, mapboxAccessToken, controller.signal)
+          : (await searchBox('suggest', sessionToken, controller.signal, {
+              q: searchQuery, limit: '5',
+            })).suggestions ?? []
         if (!controller.signal.aborted) {
-          setResult({ query: searchQuery, suggestions: data.suggestions ?? [] })
+          setResult({ query: searchQuery, suggestions })
         }
       } catch {
         if (!controller.signal.aborted) {
@@ -59,7 +64,7 @@ export default function DestinationSearch({
       clearTimeout(timeout)
       controller.abort()
     }
-  }, [open, eligible, resolving, current, searchQuery, sessionToken])
+  }, [open, eligible, resolving, current, searchQuery, sessionToken, listingAddress])
 
   useEffect(() => {
     function handleOutside(event) {
@@ -89,7 +94,7 @@ export default function DestinationSearch({
 
   function changeQuery(value) {
     retrieval.current?.abort()
-    setQuery(value)
+    if (!listingAddress) setInput(value)
     setSelected(false)
     setResolving(false)
     setResult(null)
@@ -100,6 +105,14 @@ export default function DestinationSearch({
   }
 
   async function selectDestination(suggestion) {
+    if (listingAddress) {
+      close()
+      setSelected(true)
+      setResult(null)
+      onSelect(suggestion)
+      return
+    }
+
     retrieval.current?.abort()
     const controller = new AbortController()
     retrieval.current = controller
@@ -118,7 +131,7 @@ export default function DestinationSearch({
 
       const address = feature.properties?.full_address || suggestion.full_address
         || [suggestion.name, suggestion.place_formatted].filter(Boolean).join(', ')
-      setQuery(suggestion.feature_type === 'address' ? address : suggestion.name)
+      setInput(suggestion.feature_type === 'address' ? address : suggestion.name)
       setSelected(true)
       setResult(null)
       setSessionToken(crypto.randomUUID())
@@ -146,9 +159,10 @@ export default function DestinationSearch({
           : (index + direction + suggestions.length) % suggestions.length)
       }
     }
-    if (event.key === 'Enter' && hasOptions && suggestions[activeIndex]) {
-      event.preventDefault()
-      selectDestination(suggestions[activeIndex])
+    if (event.key === 'Enter' && popupOpen) {
+      const suggestion = suggestions[activeIndex] ?? (listingAddress ? suggestions[0] : null)
+      if (suggestion || (listingAddress && !current)) event.preventDefault()
+      if (suggestion) selectDestination(suggestion)
     }
   }
 
@@ -156,6 +170,9 @@ export default function DestinationSearch({
     <div ref={root} className={styles.root}>
       <input
         id={id}
+        name={name}
+        required={required}
+        maxLength={maxLength}
         type="text"
         role="combobox"
         aria-autocomplete="list"
@@ -175,7 +192,7 @@ export default function DestinationSearch({
       {popupOpen && (
         <div className={styles.dropdown}>
           {hasOptions ? (
-            <ul id={listId} role="listbox" aria-label="Destination suggestions" className={styles.options}>
+            <ul id={listId} role="listbox" aria-label={listingAddress ? 'Address suggestions' : 'Destination suggestions'} className={styles.options}>
               {suggestions.map((suggestion, index) => (
                 <li
                   id={`${listId}-${index}`}
@@ -195,7 +212,7 @@ export default function DestinationSearch({
             </ul>
           ) : (
             <p className={styles.status} role="status">
-              {current ? current.error ?? 'No locations found' : 'Searching…'}
+              {current ? current.error ?? (listingAddress ? 'No addresses found' : 'No locations found') : 'Searching…'}
             </p>
           )}
         </div>

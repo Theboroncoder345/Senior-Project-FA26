@@ -65,7 +65,7 @@ def test_valid_reservation(client, booking):
         'id': 1, **booking,
         'start_time': booking['start_time'] + '+00:00',
         'end_time': booking['end_time'] + '+00:00',
-        'total_cost': 40.0,
+        'total_cost': 40.0, 'status': 'active',
     }
     assert client.get('/reservations/1').json() == response.json()
     assert client.get('/reservations').json() == [response.json()]
@@ -82,11 +82,11 @@ def test_invalid_reservation_references(client, booking, override, detail):
 
 
 @pytest.mark.parametrize('override', [
-    {'end_time': '2026-11-02T10:00:00'},
-    {'end_time': '2026-11-02T09:00:00'},
+    {'end_time': '2099-11-02T10:00:00'},
+    {'end_time': '2099-11-02T09:00:00'},
     {'start_time': 'not-a-date'},
     {'end_time': 'not-a-date'},
-    {'end_time': '2026-11-02T12:00:00Z'},
+    {'end_time': '2099-11-02T12:00:00Z'},
 ])
 def test_invalid_reservation_times(client, booking, override):
     response = client.post('/reservations', json=booking | override)
@@ -103,8 +103,8 @@ def test_double_booking(client, booking, start, end):
     first = client.post('/reservations', json=booking)
     assert first.status_code == 200
     response = client.post('/reservations', json=booking | {
-        'start_time': f'2026-11-02T{start}:00',
-        'end_time': f'2026-11-02T{end}:00',
+        'start_time': f'2099-11-02T{start}:00',
+        'end_time': f'2099-11-02T{end}:00',
     })
     assert response.status_code == 409
     assert response.json() == {'detail': 'Parking spot is already reserved during that time'}
@@ -115,8 +115,8 @@ def test_double_booking(client, booking, start, end):
 def test_adjacent_reservations_allowed(client, booking, start, end):
     assert client.post('/reservations', json=booking).status_code == 200
     response = client.post('/reservations', json=booking | {
-        'start_time': f'2026-11-02T{start}:00',
-        'end_time': f'2026-11-02T{end}:00',
+        'start_time': f'2099-11-02T{start}:00',
+        'end_time': f'2099-11-02T{end}:00',
     })
     assert response.status_code == 200
     assert response.json()['id'] == 2

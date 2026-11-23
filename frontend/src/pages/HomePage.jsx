@@ -1,5 +1,7 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ListingCard from '../components/ListingCard'
+import { useFavorites } from '../api/useFavorites'
 import Navbar from '../components/Navbar'
 import DestinationSearch from '../DestinationSearch'
 import ParkingFilters from '../ParkingFilters'
@@ -11,6 +13,7 @@ import styles from './HomePage.module.css'
 const ParkingMap = lazy(() => import('../ParkingMap'))
 
 export default function HomePage() {
+  const favorites = useFavorites()
   const [search, setSearch] = useState('')
   const [destination, setDestination] = useState(null)
   const [filters, setFilters] = useState(DEFAULT_PARKING_FILTERS)
@@ -22,7 +25,7 @@ export default function HomePage() {
   const bookingQuery = hasWindow && validWindow
     ? '?' + new URLSearchParams({ start: filters.start, end: filters.end }).toString()
     : ''
-  const listingHref = id => `/listing/${id}${bookingQuery}`
+  const listingHref = useCallback(id => `/listing/${id}${bookingQuery}`, [bookingQuery])
 
   function resetSearch() {
     setFilters(DEFAULT_PARKING_FILTERS)
@@ -32,7 +35,7 @@ export default function HomePage() {
   const query = search.trim().toLowerCase()
   const maxDistance = Number(filters.maxDistance)
 
-  const filtered = (listings.data ?? [])
+  const filtered = useMemo(() => (listings.data ?? [])
     .map(spot => ({
       ...spot,
       distance: destination && parkingLocation(spot)
@@ -46,8 +49,8 @@ export default function HomePage() {
     .sort((a, b) => {
       if (destination) return a.distance - b.distance
       return filters.sortBy === 'price' ? a.price - b.price : 0
-    })
-  const mapped = filtered.filter(parkingLocation)
+    }), [listings.data, destination, maxDistance, query, filters.sortBy])
+  const mapped = useMemo(() => filtered.filter(parkingLocation), [filtered])
 
   function updateSearch(value) {
     setSearch(value)
@@ -135,11 +138,14 @@ export default function HomePage() {
           <p role="alert">{listings.error.message} <button type="button" onClick={listings.reload}>Try again</button></p>
         )}
 
+        {favorites.error && <p role="alert">Saved parking is unavailable. <button onClick={favorites.reload}>Try again</button></p>}
+
         {/* Listings grid */}
         {filtered.length > 0 ? (
           <div className={styles.grid}>
             {filtered.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} href={listingHref(listing.id)} />
+              <ListingCard key={listing.id} listing={listing} href={listingHref(listing.id)}
+                favorites={favorites} hasWindow={hasWindow} />
             ))}
           </div>
         ) : validWindow && !listings.loading && !listings.error && (
@@ -156,33 +162,6 @@ export default function HomePage() {
           </div>
         )}
       </main>
-    </div>
-  )
-}
-
-function ListingCard({ listing, href }) {
-  return (
-    <div className={`${styles.card} ${!listing.available ? styles.cardUnavailable : ''}`}>
-      <div className={styles.cardImage}>
-        <span className={styles.cardImageIcon}>🅿</span>
-        {!listing.available && (
-          <div className={styles.unavailableBadge}>Unavailable</div>
-        )}
-      </div>
-
-      <div className={styles.cardBody}>
-        <h3 className={styles.cardTitle}>{listing.title || listing.address}</h3>
-        {listing.title && <p className={styles.cardAddress}>{listing.address}</p>}
-        <p className={styles.cardAddress}>{listing.description}</p>
-        {listing.distance !== null && <p className={styles.cardAddress}>{listing.distance.toFixed(2)} miles away</p>}
-
-        <div className={styles.cardFooter}>
-          <span className={styles.cardPrice}>
-            <strong>${listing.price}</strong>/hr
-          </span>
-          <Link to={href} className={styles.bookBtn}>{listing.available ? 'View and book' : 'View listing'}</Link>
-        </div>
-      </div>
     </div>
   )
 }

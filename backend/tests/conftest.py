@@ -61,8 +61,8 @@ def booking(client, create_user, create_spot, auth_headers):
     client.headers.update(auth_headers(renter['id']))
     return {
         'spot_id': spot['id'], 'user_id': renter['id'],
-        'start_time': '2026-11-02T10:00:00',
-        'end_time': '2026-11-02T12:00:00',
+        'start_time': '2099-11-02T10:00:00',
+        'end_time': '2099-11-02T12:00:00',
     }
 
 

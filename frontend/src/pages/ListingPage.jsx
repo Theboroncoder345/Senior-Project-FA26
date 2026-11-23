@@ -1,5 +1,8 @@
 import { lazy, Suspense, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import ListingPhoto from '../components/ListingPhoto'
+import FavoriteButton from '../components/FavoriteButton'
+import { useFavorites } from '../api/useFavorites'
 import Navbar from '../components/Navbar'
 import { hasMapbox, parkingLocation } from '../parkingApi'
 import { apiRequest } from '../api/client'
@@ -17,6 +20,7 @@ function ListingDetail({ id }) {
   const navigate = useNavigate()
   const resource = useApiResource(`/parking-spots/${encodeURIComponent(id)}`, { authenticated: false })
   const listing = resource.data
+  const favorites = useFavorites()
   const signOut = useSignOut()
   const [params] = useSearchParams()
   const [startTime, setStartTime] = useState(() => params.get('start') ?? '')
@@ -52,6 +56,10 @@ function ListingDetail({ id }) {
       setBookingError('Choose a date and an end time after the start time.')
       return
     }
+    if (end <= new Date()) {
+      setBookingError('Choose a reservation that ends in the future.')
+      return
+    }
     setSubmitting(true)
     try {
       const reservation = await apiRequest('/reservations', {
@@ -84,6 +92,8 @@ function ListingDetail({ id }) {
             {!listing.available && <span className={styles.unavailableBadge}>Unavailable</span>}
             <h1 className={styles.title}>{listing.title || listing.address}</h1>
             {listing.title && <p>{listing.address}</p>}
+            <FavoriteButton listing={listing} favorites={favorites} />
+            {favorites.error && <p role="alert">Saved parking is unavailable. <button onClick={favorites.reload}>Try again</button></p>}
           </div>
           <div className={styles.priceTag}>
             <span className={styles.priceAmount}>${listing.price}</span>
@@ -103,17 +113,25 @@ function ListingDetail({ id }) {
               </Suspense>
             )}
 
-            {listing.photo_urls?.length ? (
-              <div className={styles.photos}>
-                {listing.photo_urls.map((url, index) => <ListingPhoto key={`${index}-${url}`} url={url} index={index} />)}
-              </div>
-            ) : <p>Photos have not been added for this listing.</p>}
+            <div className={styles.photos}>
+              {(listing.photo_urls?.length ? listing.photo_urls : [null]).map((url, index) => (
+                <div className={styles.photoFrame} key={`${index}-${url}`}>
+                  <ListingPhoto url={url} alt={`Parking spot photo ${index + 1}`} />
+                </div>
+              ))}
+            </div>
 
             {/* About */}
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>About this spot</h2>
               {listing.parking_type && <p>{listing.parking_type}</p>}
               <p className={styles.description}>{listing.description}</p>
+              {listing.amenities?.length > 0 && (
+                <div>
+                  <h3>Amenities</h3>
+                  <ul className={styles.amenities}>{listing.amenities.map(amenity => <li key={amenity}>{amenity}</li>)}</ul>
+                </div>
+              )}
             </div>
 
           </div>
@@ -183,14 +201,5 @@ function ListingDetail({ id }) {
         </div>
       </div>
     </div>
-  )
-}
-
-
-function ListingPhoto({ url, index }) {
-  const [failed, setFailed] = useState(false)
-  return failed ? <p>Photo {index + 1} is unavailable.</p> : (
-    <img src={url} alt={`Parking spot photo ${index + 1}`} loading="lazy"
-      referrerPolicy="no-referrer" onError={() => setFailed(true)} />
   )
 }

@@ -13,8 +13,8 @@ def records(client, create_user, create_spot, auth_headers):
     spot = create_spot(owner['id'])
     other_spot = create_spot(other_owner['id'])
     payload = {
-        'spot_id': spot['id'], 'start_time': '2026-11-02T10:00:00',
-        'end_time': '2026-11-02T12:00:00',
+        'spot_id': spot['id'], 'start_time': '2099-11-02T10:00:00',
+        'end_time': '2099-11-02T12:00:00',
     }
     reservation = client.post('/reservations', json=payload, headers=auth_headers(renter['id']))
     other_reservation = client.post('/reservations', json=payload | {'spot_id': other_spot['id']}, headers=auth_headers(other_renter['id']))
@@ -73,7 +73,7 @@ def test_owner_can_update_but_cannot_transfer_listing(client, records, auth_head
         assert client.get('/parking-spots/1').json()['owner_id'] == records['owner']['id']
 
 
-def test_only_creator_can_cancel_and_owner_can_then_delete_listing(client, records, auth_headers):
+def test_only_creator_can_cancel_and_history_prevents_listing_deletion(client, records, auth_headers):
     for actor in ['owner', 'other_owner', 'other_renter']:
         response = client.delete('/reservations/1', headers=auth_headers(records[actor]['id']))
         assert response.status_code == 403
@@ -82,12 +82,13 @@ def test_only_creator_can_cancel_and_owner_can_then_delete_listing(client, recor
     renter_headers = auth_headers(records['renter']['id'])
     response = client.delete('/reservations/1', headers=renter_headers)
     assert response.status_code == 200
-    assert response.json() == {'message': 'Reservation deleted'}
-    assert client.delete('/reservations/1', headers=renter_headers).status_code == 404
+    assert response.json() == {'message': 'Reservation cancelled'}
+    assert client.delete('/reservations/1', headers=renter_headers).status_code == 200
+    assert client.get('/reservations/1', headers=renter_headers).json()['status'] == 'cancelled'
     response = client.delete('/parking-spots/1', headers=owner_headers)
-    assert response.status_code == 200
-    assert response.json() == {'message': 'Parking spot deleted'}
-    assert client.get('/parking-spots/1').status_code == 404
+    assert response.status_code == 409
+    assert response.json() == {'detail': 'Cannot delete a parking spot with reservations'}
+    assert client.get('/parking-spots/1').status_code == 200
 
 
 @pytest.mark.parametrize('actor, expected', [
@@ -161,11 +162,11 @@ def test_full_login_authorization_flow(client, signed_in):
         'address': 'Street', 'description': 'Parking', 'price': 0, 'available': True,
     }).json()
     reservation = client.post('/reservations', headers=renter_headers, json={
-        'spot_id': spot['id'], 'start_time': '2026-11-02T10:00:00', 'end_time': '2026-11-02T11:00:00',
+        'spot_id': spot['id'], 'start_time': '2099-11-02T10:00:00', 'end_time': '2099-11-02T11:00:00',
     }).json()
     assert reservation['user_id'] == renter['id']
     assert client.get('/users/me/reservations', headers=renter_headers).json() == [reservation]
     assert client.get('/owners/me/parking-spots', headers=owner_headers).json() == [spot]
     assert client.delete(f"/reservations/{reservation['id']}", headers=owner_headers).status_code == 403
     assert client.delete(f"/reservations/{reservation['id']}", headers=renter_headers).status_code == 200
-    assert client.delete(f"/parking-spots/{spot['id']}", headers=owner_headers).status_code == 200
+    assert client.delete(f"/parking-spots/{spot['id']}", headers=owner_headers).status_code == 409

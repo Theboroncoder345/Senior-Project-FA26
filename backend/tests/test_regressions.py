@@ -61,7 +61,7 @@ def test_unavailable_spot_cannot_be_reserved(client, booking, auth_headers):
     assert client.get('/reservations').json() == []
 
 
-def test_reserved_spot_deletion_is_rejected_until_reservation_removed(client, booking, auth_headers):
+def test_reserved_spot_deletion_is_rejected_even_after_cancellation(client, booking, auth_headers):
     reservation = client.post('/reservations', json=booking).json()
     path = f"/parking-spots/{booking['spot_id']}"
     response = client.delete(path, headers=auth_headers(1))
@@ -69,22 +69,22 @@ def test_reserved_spot_deletion_is_rejected_until_reservation_removed(client, bo
     assert client.get(path).status_code == 200
     assert client.get('/owners/1/reservations', headers=auth_headers(1)).json() == [reservation | {"renter_name": "Test User"}]
     assert client.delete(f"/reservations/{reservation['id']}").status_code == 200
-    assert client.delete(path, headers=auth_headers(1)).status_code == 200
-    assert client.get(path).status_code == 404
+    assert client.delete(path, headers=auth_headers(1)).status_code == 409
+    assert client.get(path).status_code == 200
 
 
 @pytest.mark.parametrize('aware_first', [False, True])
 def test_naive_and_aware_bookings_compare_without_server_error(client, booking, aware_first):
     aware = booking | {
-        'start_time': '2026-11-02T05:00:00-05:00',
-        'end_time': '2026-11-02T07:00:00-05:00',
+        'start_time': '2099-11-02T05:00:00-05:00',
+        'end_time': '2099-11-02T07:00:00-05:00',
     }
     first, second = (aware, booking) if aware_first else (booking, aware)
     assert client.post('/reservations', json=first).status_code == 200
     assert client.post('/reservations', json=second).status_code == 409
     adjacent = booking | {
-        'start_time': '2026-11-02T07:00:00-05:00',
-        'end_time': '2026-11-02T08:00:00-05:00',
+        'start_time': '2099-11-02T07:00:00-05:00',
+        'end_time': '2099-11-02T08:00:00-05:00',
     }
     assert client.post('/reservations', json=adjacent).status_code == 200
 

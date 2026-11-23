@@ -28,8 +28,3 @@ export const DEFAULT_PARKING_FILTERS = {
   available: 'true',
   sortBy: '',
 }
-
-
-export function photoUrls(value) {
-  return value.split(/\r?\n/).map(url => url.trim()).filter(Boolean)
-}

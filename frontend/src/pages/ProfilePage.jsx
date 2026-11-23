@@ -13,7 +13,7 @@ export default function ProfilePage() {
       <main className={styles.main}>
         <h1 className={styles.title}>Profile</h1>
         {account.loading && <p role="status">Loading your profile…</p>}
-        {account.error && <p role="alert">{account.error.message}</p>}
+        {account.error && <p role="alert">{account.error.message} <button onClick={account.reload}>Try again</button></p>}
         {user && (
           <>
             <dl>

@@ -61,7 +61,7 @@ class Records:
         if window is not None:
             conditions.append("""NOT EXISTS (
                 SELECT 1 FROM reservations r
-                WHERE r.spot_id = parking_spots.spot_id
+                WHERE r.spot_id = parking_spots.spot_id AND r.status = 'active'
                   AND :requested_start < r.end_time AND :requested_end > r.start_time
             )""")
             params["requested_start"], params["requested_end"] = window
@@ -105,6 +105,22 @@ class Records:
     def delete(self, table, record_id):
         key = FIELDS[table]["id"]
         self.session.execute(text(f"DELETE FROM {table} WHERE {key} = :id"), {"id": record_id})
+
+    def saved_spots(self, user_id):
+        rows = self._rows(
+            """SELECT s.* FROM favorites f JOIN parking_spots s ON s.spot_id = f.spot_id
+               WHERE f.user_id = :user_id ORDER BY f.favorite_id DESC""",
+            {"user_id": user_id},
+        )
+        return [to_api("parking_spots", row) for row in rows]
+
+    def set_favorite(self, user_id, spot_id, saved):
+        sql = (
+            """INSERT INTO favorites (user_id, spot_id) VALUES (:user_id, :spot_id)
+               ON CONFLICT (user_id, spot_id) DO NOTHING"""
+            if saved else "DELETE FROM favorites WHERE user_id = :user_id AND spot_id = :spot_id"
+        )
+        self.session.execute(text(sql), {"user_id": user_id, "spot_id": spot_id})
 
     def owner_reservations(self, owner_id):
         rows = self._rows(

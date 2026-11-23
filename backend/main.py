@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.db.config import DatabaseSettings
 from backend.db.repository import Conflict, get_repository
-from backend.routers import auth, parking_spots, reservations, users
+from backend import photos
+from backend.routers import auth, favorites, parking_spots, reservations, users
 
 
 @asynccontextmanager
@@ -49,6 +50,10 @@ def home():
 
 
 app.include_router(auth.router)
+app.include_router(favorites.router)
+app.include_router(photos.router)
+photos.PHOTO_DIRECTORY.mkdir(parents=True, exist_ok=True)
+app.mount(photos.PHOTO_PREFIX.rstrip("/"), photos.ListingPhotoFiles(directory=photos.PHOTO_DIRECTORY), name="listing-photos")
 app.include_router(parking_spots.router)
 app.include_router(reservations.router)
 app.include_router(users.router)

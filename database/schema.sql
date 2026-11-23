@@ -34,6 +34,10 @@ CREATE TABLE public.parking_spots
     title text,
     parking_type text,
     photo_urls text[] NOT NULL DEFAULT '{}',
+    amenities text[] NOT NULL DEFAULT '{}'
+    CHECK (cardinality(amenities) <= 7 AND array_position(amenities, NULL) IS NULL
+        AND amenities <@ ARRAY['Covered', 'EV Charging', 'Overnight Parking',
+            'Security Camera', 'Accessible Parking', 'Large Vehicle Friendly', '24/7 Access']),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT parking_price_nonnegative CHECK (price_per_hour >= 0 AND price_per_hour < 'Infinity'::double precision),
     CONSTRAINT parking_address_not_blank CHECK (length(trim(address)) > 0),
@@ -56,11 +60,12 @@ CREATE TABLE public.reservations
     start_time timestamp with time zone NOT NULL,
     end_time timestamp with time zone NOT NULL,
     total_cost numeric(10,2),
+    status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'completed')),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT reservations_pkey PRIMARY KEY (reservation_id),
     CONSTRAINT reservation_time_order CHECK (end_time > start_time),
     CONSTRAINT reservations_no_overlap EXCLUDE USING gist
-        (spot_id WITH =, tstzrange(start_time, end_time, '[)') WITH &&),
+        (spot_id WITH =, tstzrange(start_time, end_time, '[)') WITH &&) WHERE (status = 'active'),
     CONSTRAINT reservations_spot_id_fkey FOREIGN KEY (spot_id)
         REFERENCES public.parking_spots (spot_id) MATCH SIMPLE
         ON UPDATE NO ACTION
@@ -73,6 +78,15 @@ CREATE TABLE public.reservations
 
 TABLESPACE pg_default;
 
+
+CREATE TABLE public.favorites (
+    favorite_id serial PRIMARY KEY,
+    user_id integer NOT NULL REFERENCES public.users (user_id) ON DELETE CASCADE,
+    spot_id integer NOT NULL REFERENCES public.parking_spots (spot_id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (user_id, spot_id)
+);
+CREATE INDEX IF NOT EXISTS favorites_spot_idx ON public.favorites (spot_id);
 
 CREATE INDEX IF NOT EXISTS parking_spots_owner_idx ON public.parking_spots (owner_id);
 CREATE INDEX IF NOT EXISTS reservations_user_idx ON public.reservations (user_id);

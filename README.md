@@ -111,15 +111,16 @@ set `VITE_API_BASE_URL` or enable maps and destination suggestions with a public
 1. Sign up as a host by checking **I want to list parking**, or sign in with an
    existing account and select **Become a host** on the Host Dashboard.
 2. Publish a listing near PNC Bank Arts Center in Holmdel, NJ. Enter coordinates
-   for your own demo parking spot, and add a title, parking type, and up to five
-   HTTPS image links if desired. Use the description for amenities, access
-   instructions, and vehicle restrictions.
+   for your own demo parking spot. Add a title, parking type, and up to five
+   photos using **Upload Photos** and **Add Image URL** in any combination.
+   Select amenities and describe access instructions and vehicle restrictions.
 3. Sign out, create a renter account, search for `pnc`, and select **PNC Bank Arts
    Center**. Choose a start and end time. Open a result or a map marker and reserve
    the spot with the prefilled interval. Use **My Bookings** to view or cancel it.
 4. Sign back in as the host to see the reservation and its stored booking value.
    Edit the listing, pause or unpause it, and try deleting it while a reservation
-   exists. Cancel from the renter account before deleting.
+   exists. Cancel from the renter account to free the time slot and show the
+   booking in the Cancelled tab. Pause listings with retained booking history.
 
 PostgreSQL filters reservation overlaps. Adjacent windows are available, and
 booking creation still checks for conflicts in the database. The browser sorts
@@ -127,11 +128,15 @@ and filters by straight-line distance using listing coordinates. Listings withou
 coordinates remain in the list unless a radius is set. Mapbox destination
 suggestions are used in the browser and never persisted.
 
-Photo URLs are loaded by the renter's browser from external sites. The host
-controls the content and availability, and an inaccessible image shows a fallback.
-Cancelled bookings are permanently removed. The Past tab shows retained bookings
-whose end time has passed. Reservation totals represent booking value. Payments
-and payouts are outside the demo.
+Hosts can mix local uploads and HTTPS URLs, up to five photos per listing. The
+first is the cover, and the gallery uses a placeholder for missing images.
+See [classroom photo uploads](database/README.md#classroom-photo-uploads)
+for format and storage limits. Use the heart to save parking and open
+**Saved parking** from the account menu.
+
+My Bookings groups reservations into Upcoming, Past, and Cancelled. The host
+dashboard shows booking value based on stored reservation totals, excluding
+cancelled reservations.
 
 ### Frontend checks
 

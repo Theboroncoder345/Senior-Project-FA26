@@ -54,6 +54,7 @@ export default function Navbar({ accountResource }) {
               <Link to="/bookings" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
                 📅 My Bookings
               </Link>
+              <Link to="/saved" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>Saved parking</Link>
               <Link to="/profile" className={styles.dropdownItem} onClick={() => setMenuOpen(false)}>
                 Profile
               </Link>

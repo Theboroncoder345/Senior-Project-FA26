@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from backend.db.mapping import as_utc
 from backend.db.repository import Repository
 from backend.models.parking_spots import ParkingAvailability, ParkingSpot, ParkingSpotCreate
+from backend.photos import validate_new_uploads
 from backend.routers.auth import current_user
 from backend.validation import require_owner, require_record_owner
 
@@ -65,6 +66,7 @@ def create_parking_spot(
     repository: Repository,
 ):
     require_owner(user)
+    validate_new_uploads(spot.photo_urls, user["id"])
     with repository.transaction() as records:
         return records.insert("parking_spots", spot.model_dump(exclude_unset=True) | {"owner_id": user["id"]})
 
@@ -81,6 +83,7 @@ def update_parking_spot(
         require_record_owner(spot, user, "owner_id")
         if updated_spot.owner_id != spot["owner_id"]:
             raise HTTPException(status_code=403, detail="Cannot change parking spot owner")
+        validate_new_uploads(updated_spot.photo_urls, user["id"], spot.get("photo_urls", ()))
         return records.update("parking_spots", spot_id, updated_spot.model_dump(exclude={"owner_id"}, exclude_unset=True))
 
 

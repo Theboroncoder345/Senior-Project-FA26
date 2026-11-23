@@ -36,11 +36,12 @@ psql -v ON_ERROR_STOP=1 -f database/seed.sql
 ```
 
 For a database already running the previous PostgreSQL-backed ParkShare
-schema, apply this additive migration. It preserves existing IDs, listings,
+schema, apply these additive migrations in order. It preserves existing IDs, listings,
 users and bookings. Fresh installs already include the changes.
 
 ```sh
 psql -v ON_ERROR_STOP=1 -f database/migrations/001_demo_listing_details.sql
+psql -v ON_ERROR_STOP=1 -f database/migrations/002_marketplace_features.sql
 ```
 
 For earlier database layouts, compare against the current schema first. The optional
@@ -91,12 +92,14 @@ signup flow to demonstrate host and renter actions. The seed adds no
 reservations, so you can make a booking during the demo and repeat the same
 time-window search to show the listing disappearing.
 
-The listings use distinct HTTPS placeholder graphics from Placehold.co. They
-are illustrative and require an internet connection and a working external
-service. The existing listing-detail photo fallback handles failed images.
-Marketplace cards continue to use the existing parking icon.
+Newly seeded driveways share an illustrative, generated driveway photo bundled
+in the frontend. Other listings use HTTPS demo graphics from Placehold.co,
+which require internet access. Listing cards and detail show a parking
+placeholder when an image is missing or unavailable.
+Newly inserted demo listings include parking amenities where applicable.
 
-Rerunning the seed skips existing demo rows and leaves their IDs intact.
+Rerunning the seed skips existing demo rows and leaves their IDs intact. The new
+photo and amenity examples appear on newly seeded rows.
 To restore the original demo data, remove it and load it again:
 
 ```sh
@@ -123,6 +126,12 @@ seed are left alone.
   lock. PostgreSQL's `reservations_no_overlap` constraint rejects intersecting
   bookings on the same spot. Adjacent intervals are allowed. Overlaps, duplicate
   emails, and attempts to delete a booked listing return HTTP 409.
+- A reservation starts active and is shown as completed once its end time passes.
+  Only the renter can cancel an active reservation. Cancellation preserves history
+  and releases the time window. Bookings retained in history still prevent listing
+  deletion. Existing reservation IDs and totals are preserved by migration 002.
+- Favorites use a unique user/listing pair and are scoped to the signed-in account.
+  Deleting a listing removes its favorites. Amenities use a controlled text array.
 - Reservation timestamps use `timestamptz`. The API interprets naive inputs as UTC
   and returns ISO 8601 timestamps with an explicit UTC offset. The response
   retains the existing reservation fields.
@@ -155,3 +164,29 @@ tables within those schemas, and drop the test schemas during teardown.
 Application data in `public` is untouched. Run with `-m "not postgres"` for the
 backend suite that requires no database. When `DATABASE_URL` is absent, the
 integration tests skip.
+
+
+## Classroom photo uploads
+
+Authenticated hosts can upload JPG, JPEG, PNG, and WebP files up to 5 MiB
+(5,242,880 bytes) and 16 megapixels each. The API requires matching extension,
+image content type, and decodable raster content. It normalizes EXIF orientation
+and re-encodes a single still image without the original metadata or trailing
+bytes. Only generated raster paths are published by FastAPI under `/uploads/`.
+The backend never uses the original filename. The photo editor posts the raw
+image to `POST /parking-photos?extension=...` with its image content type and
+the host's bearer token, then attaches the returned `url` when saving.
+
+The listing stores up to five references in `parking_spots.photo_urls`, including
+any combination of uploaded paths and HTTPS image URLs. The first reference is
+the cover, and the second through fifth appear with it on the detail page.
+Uploaded files default to `backend/uploads/`. Set `PARKSHARE_UPLOAD_DIR` before
+starting FastAPI to use another writable directory dedicated to uploads. The
+filesystem and the database both need to be retained across restarts. Images are
+public by URL as soon as an upload succeeds. Removing a preview or editing a
+listing removes the reference. Unreferenced files can remain on disk.
+
+Use this storage for local or classroom demos. A public deployment needs object
+storage such as S3 or Cloudinary, along with storage quotas, orphan-file cleanup,
+and an upload lifecycle. Remote HTTPS photos load directly in the browser and
+depend on their origin's availability.

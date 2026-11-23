@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ListingAddressInput from '../components/ListingAddressInput'
 import Navbar from '../components/Navbar'
-import { photoUrls } from '../parkingApi'
+import PhotoEditor from '../components/PhotoEditor'
+import ListingPhoto from '../components/ListingPhoto'
+import AmenityPicker from '../components/AmenityPicker'
 import { apiRequest } from '../api/client'
 import { useApiResource, useSignOut } from '../api/useApiResource'
 import styles from './HostDashboardPage.module.css'
@@ -23,6 +26,18 @@ export default function HostDashboardPage() {
 
   const spots = listings.data ?? []
   const bookings = reservations.data ?? []
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [])
+  const upcoming = bookings.filter(booking => booking.status === 'active' && Date.parse(booking.start_time) > now)
+  const bookingValue = bookings.reduce((total, booking) =>
+    total + (booking.status === 'cancelled' ? 0 : Math.round(Number(booking.total_cost ?? 0) * 100)), 0) / 100
+  const reservationCounts = new Map()
+  for (const booking of bookings) {
+    reservationCounts.set(booking.spot_id, (reservationCounts.get(booking.spot_id) ?? 0) + 1)
+  }
   const addresses = new Map(spots.map(spot => [spot.id, spot.address]))
 
   async function becomeHost() {
@@ -87,8 +102,10 @@ export default function HostDashboardPage() {
         {owner && (
           <>
             <div className={styles.summaryRow}>
-              <SummaryCard icon="📅" label="Reservations" value={reservations.data?.length ?? '—'} />
+              <SummaryCard icon="📅" label="Upcoming reservations" value={reservations.data ? upcoming.length : '—'} />
               <SummaryCard icon="🏠" label="Active listings" value={listings.data ? spots.filter(spot => spot.available).length : '—'} />
+              <SummaryCard icon="🏠" label="Paused listings" value={listings.data ? spots.filter(spot => !spot.available).length : '—'} />
+              <SummaryCard icon="$" label="Booking value" value={reservations.data ? `$${bookingValue.toFixed(2)}` : '—'} />
             </div>
             <div className={styles.layout}>
               <div className={styles.left}>
@@ -123,13 +140,16 @@ export default function HostDashboardPage() {
                             onSave={body => changeListing(spot, 'PUT', body)} />
                         ) : (
                           <>
+                            <div className={styles.listingCover}><ListingPhoto url={spot.photo_urls?.[0]} /></div>
                             <Link className={styles.listingTitle} to={`/listing/${spot.id}`}>{spot.title || spot.address}</Link>
-                            <p className={styles.listingAddress}>{spot.description}</p>
+                            <p className={styles.listingAddress}>{spot.address}</p>
+                            <p>{reservations.data ? reservationCounts.get(spot.id) ?? 0 : '—'} {reservationCounts.get(spot.id) === 1 ? 'reservation' : 'reservations'}</p>
                             <div className={styles.listingRight}>
                               <span className={styles.activeStatus}>{spot.available ? '● Active' : '○ Paused'}</span>
                               <p className={styles.listingPrice}>${spot.price}/hr</p>
                             </div>
                             <div className={styles.requestActions}>
+                              <Link className={styles.switchBtn} to={`/listing/${spot.id}`}>View</Link>
                               <button type="button" className={styles.switchBtn} disabled={busy}
                                 onClick={() => { setError(''); setEditing(spot.id) }}>Edit</button>
                               <button type="button" className={styles.switchBtn} disabled={busy}
@@ -183,6 +203,7 @@ function ReservationCard({ booking, address }) {
         </div>
       </div>
       <div className={styles.requestMeta}>
+        <span>{({ active: 'Upcoming', completed: 'Completed', cancelled: 'Cancelled' })[booking.status]}</span>
         <span>{formatTime(booking.start_time)} – {formatTime(booking.end_time)}</span>
         {booking.total_cost != null && <span>Reservation total: ${Number(booking.total_cost).toFixed(2)}</span>}
       </div>
@@ -191,22 +212,33 @@ function ReservationCard({ booking, address }) {
 }
 
 function ListingEditor({ spot, busy, onSave, onCancel }) {
-  const [locationError, setLocationError] = useState('')
+  const addressId = useId()
+  const [location, setLocation] = useState(() => ({
+    address: spot.address,
+    latitude: String(spot.latitude ?? ''),
+    longitude: String(spot.longitude ?? ''),
+  }))
+  const [formErrors, setFormErrors] = useState({})
+  const [photos, setPhotos] = useState(spot.photo_urls ?? [])
+  const [uploading, setUploading] = useState(false)
 
   function submit(event) {
     event.preventDefault()
+    if (busy || uploading) return
     const fields = new FormData(event.currentTarget)
     const latitude = fields.get('latitude')
     const longitude = fields.get('longitude')
-    if (Boolean(latitude) !== Boolean(longitude)) {
-      setLocationError('Enter both latitude and longitude, or clear both.')
-      return
-    }
-    setLocationError('')
     const address = fields.get('address').trim()
+    const description = fields.get('description').trim()
+    const errors = {}
+    if (!address) errors.address = 'Enter an address.'
+    if (!description) errors.description = 'Enter a description.'
+    if (Boolean(latitude) !== Boolean(longitude)) errors.location = 'Enter both coordinates, or clear both.'
+    setFormErrors(errors)
+    if (Object.keys(errors).length) return
     onSave({
       address,
-      description: fields.get('description').trim(),
+      description,
       price: Number(fields.get('price')),
       available: fields.has('available'),
       owner_id: spot.owner_id,
@@ -214,27 +246,38 @@ function ListingEditor({ spot, busy, onSave, onCancel }) {
       longitude: longitude ? Number(longitude) : null,
       title: fields.get('title').trim() || null,
       parking_type: fields.get('parking-type').trim() || null,
-      photo_urls: photoUrls(fields.get('photos')),
+      photo_urls: photos,
+      amenities: fields.getAll('amenities'),
     })
   }
 
   return (
     <form className={styles.listingEditor} onSubmit={submit}>
-      <label>Address <input name="address" defaultValue={spot.address} required /></label>
+      <div className={styles.addressField}>
+        <label htmlFor={addressId}>Address</label>
+        <ListingAddressInput id={addressId} value={location.address}
+          onChange={address => setLocation({ address, latitude: '', longitude: '' })}
+          onSelect={({ address, latitude, longitude }) => setLocation({
+            address, latitude: String(latitude), longitude: String(longitude),
+          })} />
+      </div>
+      {formErrors.address && <p role="alert">{formErrors.address}</p>}
       <label>Hourly price <input name="price" type="number" min="0" step="any" defaultValue={spot.price} required /></label>
-      <label>Description <textarea name="description" defaultValue={spot.description} required /></label>
+      <label>Description <textarea name="description" defaultValue={spot.description} maxLength={2000} required /></label>
+      {formErrors.description && <p role="alert">{formErrors.description}</p>}
       <label><input name="available" type="checkbox" defaultChecked={spot.available} /> Active</label>
       <label>Listing title <input name="title" maxLength={100} defaultValue={spot.title} /></label>
       <label>Parking type <input name="parking-type" maxLength={60} defaultValue={spot.parking_type} /></label>
-      <label>Photo links (up to 5 HTTPS URLs, one per line)
-        <textarea name="photos" defaultValue={spot.photo_urls?.join('\n')} />
-      </label>
-      <label>Latitude <input name="latitude" type="number" min="-90" max="90" step="any" defaultValue={spot.latitude} /></label>
-      <label>Longitude <input name="longitude" type="number" min="-180" max="180" step="any" defaultValue={spot.longitude} /></label>
-      {locationError && <p role="alert">{locationError}</p>}
+      <AmenityPicker selected={spot.amenities} />
+      <PhotoEditor photos={photos} onChange={setPhotos} uploading={uploading} onUploading={setUploading} disabled={busy} />
+      <label>Latitude <input name="latitude" type="number" min="-90" max="90" step="any" value={location.latitude}
+        onChange={event => setLocation({ ...location, latitude: event.target.value })} /></label>
+      <label>Longitude <input name="longitude" type="number" min="-180" max="180" step="any" value={location.longitude}
+        onChange={event => setLocation({ ...location, longitude: event.target.value })} /></label>
+      {formErrors.location && <p role="alert">{formErrors.location}</p>}
       <div className={styles.requestActions}>
-        <button type="submit" className={styles.addBtn} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
-        <button type="button" className={styles.switchBtn} onClick={onCancel} disabled={busy}>Cancel</button>
+        <button type="submit" className={styles.addBtn} disabled={busy || uploading}>{busy ? 'Saving…' : 'Save'}</button>
+        <button type="button" className={styles.switchBtn} onClick={onCancel} disabled={busy || uploading}>Cancel</button>
       </div>
     </form>
   )

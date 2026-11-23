@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import ListingAddressInput from '../components/ListingAddressInput'
 import Navbar from '../components/Navbar'
-import { photoUrls } from '../parkingApi'
+import PhotoEditor from '../components/PhotoEditor'
+import AmenityPicker from '../components/AmenityPicker'
 import { apiRequest } from '../api/client'
 import { useApiResource, useSignOut } from '../api/useApiResource'
 import styles from './NewListingPage.module.css'
 
 const EMPTY_LISTING = {
   address: '', price: '', description: '', latitude: '', longitude: '',
-  title: '', parkingType: '', photos: '',
+  title: '', parkingType: '', photos: [], amenities: [],
 }
 
 export default function NewListingPage() {
@@ -18,6 +20,7 @@ export default function NewListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [form, setForm] = useState(EMPTY_LISTING)
+  const [uploading, setUploading] = useState(false)
   const [errors, setErrors] = useState({})
   const signOut = useSignOut()
   const account = useApiResource('/auth/me')
@@ -42,6 +45,7 @@ export default function NewListingPage() {
     const errs = {}
     if (step === 1) {
       if (!form.address.trim()) errs.address = 'Address is required'
+      if (!form.title.trim()) errs.title = 'Listing title is required'
       if (form.latitude || form.longitude) {
         const latitude = Number(form.latitude)
         const longitude = Number(form.longitude)
@@ -72,7 +76,7 @@ export default function NewListingPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (isSubmitting) return
+    if (isSubmitting || uploading) return
     setErrors({})
     setIsSubmitting(true)
     try {
@@ -85,7 +89,8 @@ export default function NewListingPage() {
           available: true,
           title: form.title.trim() || null,
           parking_type: form.parkingType.trim() || null,
-          photo_urls: photoUrls(form.photos),
+          photo_urls: form.photos,
+          amenities: form.amenities,
           ...(form.latitude && form.longitude ? {
             latitude: Number(form.latitude), longitude: Number(form.longitude),
           } : {}),
@@ -167,14 +172,19 @@ export default function NewListingPage() {
 
                 <div className={styles.field}>
                   <label htmlFor="listing-address" className={styles.label}>Address</label>
-                  <input id="listing-address" className={styles.input} value={form.address}
-                    placeholder="123 Main St, City, State" onChange={update('address')} />
+                  <ListingAddressInput id="listing-address" className={styles.input} value={form.address}
+                    placeholder="Street address, city, state"
+                    onChange={address => setForm(previous => ({ ...previous, address, latitude: '', longitude: '' }))}
+                    onSelect={({ address, latitude, longitude }) => setForm(previous => ({
+                      ...previous, address, latitude: String(latitude), longitude: String(longitude),
+                    }))} />
                   {errors.address && <span className={styles.error}>{errors.address}</span>}
                 </div>
 
                 <label className={styles.field}>
-                  <span className={styles.label}>Listing title (optional)</span>
-                  <input className={styles.input} maxLength={100} value={form.title} onChange={update('title')} />
+                  <span className={styles.label}>Listing title</span>
+                  <input className={styles.input} maxLength={100} required value={form.title} onChange={update('title')} />
+                  {errors.title && <span className={styles.error} role="alert">{errors.title}</span>}
                 </label>
                 <label className={styles.field}>
                   <span className={styles.label}>Parking type (optional)</span>
@@ -184,7 +194,7 @@ export default function NewListingPage() {
 
                 <details className={styles.field}>
                   <summary>Map coordinates (optional)</summary>
-                  <p className={styles.stepSub}>Enter coordinates to show your spot on the map.</p>
+                  <p className={styles.stepSub}>Select an address suggestion to fill the map coordinates, or enter them here.</p>
                   <label htmlFor="listing-latitude" className={styles.label}>Latitude</label>
                   <input id="listing-latitude" className={styles.input} type="number" step="any"
                     min="-90" max="90" value={form.latitude} onChange={update('latitude')} />
@@ -207,11 +217,13 @@ export default function NewListingPage() {
                 <p className={styles.stepSub}>Help renters know what to expect</p>
 
                 <div className={styles.field}>
-                  <label className={styles.label}>Price per hour ($)</label>
+                  <label htmlFor="listing-price" className={styles.label}>Price per hour ($)</label>
                   <div className={styles.priceWrapper}>
                     <span className={styles.priceDollar}>$</span>
                     <input
+                      id="listing-price"
                       type="number"
+                      step="any"
                       min="0"
                       placeholder="0"
                       value={form.price}
@@ -224,16 +236,23 @@ export default function NewListingPage() {
                 </div>
 
                 <div className={styles.field}>
-                  <label className={styles.label}>Description</label>
+                  <label htmlFor="listing-description" className={styles.label}>Description</label>
                   <textarea
+                    id="listing-description"
                     placeholder="Describe the space, amenities, access instructions, and vehicle restrictions…"
                     value={form.description}
                     onChange={update('description')}
                     className={`${styles.textarea} ${errors.description ? styles.inputError : ''}`}
-                    rows={4}
+                    rows={4} maxLength={2000}
                   />
                   {errors.description && <span className={styles.error}>{errors.description}</span>}
                 </div>
+
+                <AmenityPicker selected={form.amenities} onChange={event => {
+                  const { value, checked } = event.target
+                  setForm(previous => ({ ...previous, amenities: checked
+                    ? [...previous.amenities, value] : previous.amenities.filter(item => item !== value) }))
+                }} />
 
                 <div className={styles.navBtns}>
                   <button className={styles.backStepBtn} onClick={prevStep}>← Back</button>
@@ -246,11 +265,8 @@ export default function NewListingPage() {
             {step === 3 && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>Review and publish</h2>
-                <label className={styles.field}>
-                  <span className={styles.label}>Photo links (optional)</span>
-                  <textarea className={styles.textarea} rows={3} value={form.photos} onChange={update('photos')}
-                    placeholder="Up to 5 HTTPS image URLs, one per line" />
-                </label>
+                <PhotoEditor photos={form.photos} onChange={photos => setForm(previous => ({ ...previous, photos }))}
+                  uploading={uploading} onUploading={setUploading} disabled={isSubmitting} />
 
                 {/* Summary */}
                 <div className={styles.summary}>
@@ -266,11 +282,11 @@ export default function NewListingPage() {
 
                 {errors.submit && <p className={styles.error} role="alert">{errors.submit}</p>}
                 <div className={styles.navBtns}>
-                  <button className={styles.backStepBtn} onClick={prevStep}>← Back</button>
+                  <button className={styles.backStepBtn} onClick={prevStep} disabled={uploading || isSubmitting}>← Back</button>
                   <button
                     className={styles.submitBtn}
                     onClick={handleSubmit}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || uploading}
                   >
                     {isSubmitting ? 'Publishing…' : '🚀 Publish listing'}
                   </button>

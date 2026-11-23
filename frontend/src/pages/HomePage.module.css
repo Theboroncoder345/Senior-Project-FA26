@@ -254,8 +254,7 @@
   justify-content: center;
   position: relative;
 }
-.cardImageIcon { font-size: 3rem; opacity: 0.4; }
-.unavailableBadge {
+.availabilityBadge {
   position: absolute;
   top: 0.6rem;
   left: 0.6rem;
@@ -271,16 +270,14 @@
 .cardBody {
   padding: 1rem;
 }
-.typeBadge {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  margin-bottom: 0.5rem;
-  letter-spacing: 0.3px;
+.cardHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .5rem;
 }
 .cardTitle {
+  overflow-wrap: anywhere;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--gray-800);
@@ -288,8 +285,15 @@
 }
 .cardAddress {
   font-size: 0.8rem;
-  color: var(--gray-400);
+  color: var(--gray-600);
   margin: 0 0 0.85rem;
+}
+.cardLocation {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 .cardFooter {
   display: flex;

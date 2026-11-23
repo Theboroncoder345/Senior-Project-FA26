@@ -36,3 +36,6 @@ frontend/dist-ssr/
 
 # Share placeholders, never local credentials
 !.env.example
+
+# Locally uploaded listing photos
+/backend/uploads/
