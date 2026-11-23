@@ -14,17 +14,20 @@ export default function ParkingFilters({ filters, setFilters, hasDestination, on
         <option value="">All spots</option>
         <option value="false">Unavailable spots</option>
       </select>
-      {hasDestination && (
-        <input className={inputClassName} type="number" min="0" step="any"
-          aria-label="Maximum distance in miles" placeholder="Max miles"
-          value={filters.maxDistance} onChange={e => update('maxDistance', e.target.value)} />
+      {hasDestination ? (
+        <select className={inputClassName} aria-label="Search radius in miles"
+          value={filters.maxDistance} onChange={e => update('maxDistance', e.target.value)}>
+          {['0.5', '1', '1.5', '2', '5'].map(radius => (
+            <option key={radius} value={radius}>{radius} mi</option>
+          ))}
+        </select>
+      ) : (
+        <select className={inputClassName} aria-label="Sort results"
+          value={filters.sortBy} onChange={e => update('sortBy', e.target.value)}>
+          <option value="">Default order</option>
+          <option value="price">Lowest price first</option>
+        </select>
       )}
-      <select className={inputClassName} aria-label="Sort results"
-        value={filters.sortBy} onChange={e => update('sortBy', e.target.value)}>
-        <option value="">Default order</option>
-        <option value="price">Lowest price first</option>
-        {hasDestination && <option value="distance">Closest first</option>}
-      </select>
       <button type="button" className={inputClassName} onClick={onReset}>
         Clear filters
       </button>

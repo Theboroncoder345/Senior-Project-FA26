@@ -3,6 +3,8 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { mapboxAccessToken } from './parkingApi'
 
+const DESTINATION_ZOOM = 14
+
 export default function ParkingMap({ destination, parkingSpots, listingHref }) {
   const container = useRef(null)
   const destinationMarker = useRef(null)
@@ -20,7 +22,7 @@ export default function ParkingMap({ destination, parkingSpots, listingHref }) {
         container: container.current,
         style: 'mapbox://styles/mapbox/streets-v12',
         center: [location.longitude, location.latitude],
-        zoom: 14,
+        zoom: DESTINATION_ZOOM,
       })
     } catch {
       queueMicrotask(() => {
@@ -48,15 +50,14 @@ export default function ParkingMap({ destination, parkingSpots, listingHref }) {
     const bounds = new mapboxgl.LngLatBounds()
     const markers = parkingSpots.map(spot => {
       const coordinates = [spot.longitude, spot.latitude]
-      bounds.extend(coordinates)
+      if (!destination) bounds.extend(coordinates)
       const content = document.createElement('a')
       content.href = listingHref?.(spot.id) ?? `/listing/${spot.id}`
       content.textContent = `${spot.title || spot.address} · $${spot.price}/hr`
       const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(content)
       return new mapboxgl.Marker().setLngLat(coordinates).setPopup(popup).addTo(map)
     })
-    if (destination) bounds.extend([destination.longitude, destination.latitude])
-    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 0 })
+    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50, maxZoom: DESTINATION_ZOOM, duration: 0 })
     return () => markers.forEach(marker => marker.remove())
   }, [destination, listingHref, map, parkingSpots])
 
@@ -69,6 +70,7 @@ export default function ParkingMap({ destination, parkingSpots, listingHref }) {
     }
 
     const coordinates = [destination.longitude, destination.latitude]
+    map.jumpTo({ center: coordinates, zoom: DESTINATION_ZOOM })
     const name = destination.name || 'Selected destination'
     if (!destinationMarker.current) {
       destinationMarker.current = new mapboxgl.Marker({ color: '#dc2626' })

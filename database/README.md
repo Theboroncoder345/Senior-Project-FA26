@@ -64,6 +64,51 @@ The connection check executes `SELECT 1`. API requests open database sessions as
 needed. The runtime role needs access to the database, tables, and sequences.
 Keep credentials in local configuration.
 
+## Load the classroom marketplace
+
+After bootstrapping or migrating a local database, load the optional classroom
+seed into the development database. It adds **28 fictional listings** (24 active
+and 4 paused), four each around PNC Bank Arts Center, MetLife Stadium, Monmouth
+University, Newark Liberty International Airport, Asbury Park, Long Branch,
+and Red Bank.
+
+For the existing local Docker setup, run from the repository root:
+
+```sh
+docker exec -i parking-postgres psql -U parking_user -d parking_marketplace -v ON_ERROR_STOP=1 < database/demo_seed.sql
+```
+
+For the `parkshare-db` container shown above, substitute container name
+`parkshare-db`, user `parkshare`, and database `parkshare`. Outside Docker, use
+`psql -v ON_ERROR_STOP=1 -f database/demo_seed.sql` with your regular connection
+settings.
+
+All listings are explicitly labeled as fictional. The pins and area labels
+illustrate search and distance sorting. They do not identify parking available
+at a real address. The seven reserved `@parkshare-demo.example` hosts have NULL
+password hashes and cannot sign in. Create separate accounts via the existing
+signup flow to demonstrate host and renter actions. The seed adds no
+reservations, so you can make a booking during the demo and repeat the same
+time-window search to show the listing disappearing.
+
+The listings use distinct HTTPS placeholder graphics from Placehold.co. They
+are illustrative and require an internet connection and a working external
+service. The existing listing-detail photo fallback handles failed images.
+Marketplace cards continue to use the existing parking icon.
+
+Rerunning the seed skips existing demo rows and leaves their IDs intact.
+To restore the original demo data, remove it and load it again:
+
+```sh
+docker exec -i parking-postgres psql -U parking_user -d parking_marketplace -v ON_ERROR_STOP=1 < database/demo_reset.sql
+docker exec -i parking-postgres psql -U parking_user -d parking_marketplace -v ON_ERROR_STOP=1 < database/demo_seed.sql
+```
+
+Reset only targets rows with the reserved demo owner identities and dataset
+labels. If a seeded listing has a reservation, the foreign key prevents reset
+and the transaction rolls back. Existing reservations and the original minimal
+seed are left alone.
+
 ## API and database behavior
 
 - Routes keep the existing public field names. Password hashes, normalized email

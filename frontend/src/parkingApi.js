@@ -24,7 +24,7 @@ export const DEFAULT_PARKING_FILTERS = {
   start: '',
   end: '',
   maxPrice: '',
-  maxDistance: '',
+  maxDistance: '1.5',
   available: 'true',
   sortBy: '',
 }

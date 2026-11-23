@@ -30,7 +30,7 @@ export default function HomePage() {
     setSearchVersion(version => version + 1)
   }
   const query = search.trim().toLowerCase()
-  const maxDistance = filters.maxDistance === '' ? Infinity : Number(filters.maxDistance)
+  const maxDistance = Number(filters.maxDistance)
 
   const filtered = (listings.data ?? [])
     .map(spot => ({
@@ -40,22 +40,18 @@ export default function HomePage() {
         : null,
     }))
     .filter(spot => {
-      if (destination && Number.isFinite(maxDistance)) return spot.distance !== null && spot.distance <= maxDistance
-      return destination || !query || `${spot.title ?? ''} ${spot.address} ${spot.description}`.toLowerCase().includes(query)
+      if (destination) return spot.distance !== null && spot.distance <= maxDistance
+      return !query || `${spot.title ?? ''} ${spot.address} ${spot.description}`.toLowerCase().includes(query)
     })
     .sort((a, b) => {
-      if (filters.sortBy === 'price') return a.price - b.price
-      if (destination && filters.sortBy === 'distance') return (a.distance ?? Infinity) - (b.distance ?? Infinity) || 0
-      return 0
+      if (destination) return a.distance - b.distance
+      return filters.sortBy === 'price' ? a.price - b.price : 0
     })
   const mapped = filtered.filter(parkingLocation)
 
   function updateSearch(value) {
     setSearch(value)
     setDestination(null)
-    setFilters(previous => previous.sortBy === 'distance' || previous.maxDistance
-      ? { ...previous, sortBy: previous.sortBy === 'distance' ? '' : previous.sortBy, maxDistance: '' }
-      : previous)
   }
 
   return (
@@ -78,7 +74,6 @@ export default function HomePage() {
                     onSelect={place => {
                       setDestination(place)
                       setSearch(place.address)
-                      setFilters(previous => ({ ...previous, sortBy: 'distance' }))
                     }} />
                 ) : (
                   <input id="parking-search" type="search" placeholder="Address or neighborhood…"
@@ -151,9 +146,13 @@ export default function HomePage() {
           <div className={styles.empty}>
             <p className={styles.emptyIcon}>🔍</p>
             <p className={styles.emptyTitle}>
-              {hasWindow ? 'No parking spots match this time window and filters' : 'No spots match your search'}
+              {destination
+                ? `No parking spots found within ${maxDistance} ${maxDistance === 1 ? 'mile' : 'miles'}.`
+                : hasWindow ? 'No parking spots match this time window and filters' : 'No spots match your search'}
             </p>
-            <p className={styles.emptySub}>Try a different search or filter</p>
+            <p className={styles.emptySub}>
+              {destination ? 'Try increasing the search radius.' : 'Try a different search or filter'}
+            </p>
           </div>
         )}
       </main>
