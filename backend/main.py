@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.db.config import DatabaseSettings
-from backend.db.repository import Conflict, get_repository
+from backend.db.repository import Conflict, FavoritesSchemaMissing, get_repository
 from backend import photos
 from backend.routers import auth, favorites, parking_spots, reservations, users
 
@@ -42,6 +42,14 @@ def handle_validation_error(request: Request, error: RequestValidationError):
 @app.exception_handler(Conflict)
 def handle_conflict(request: Request, error: Conflict):
     return JSONResponse(status_code=409, content={"detail": str(error)})
+
+
+@app.exception_handler(FavoritesSchemaMissing)
+def handle_favorites_schema_missing(request: Request, error: FavoritesSchemaMissing):
+    return JSONResponse(status_code=503, content={
+        "code": "favorites_schema_missing",
+        "detail": "Saved parking database is not initialized. Apply database migration 002.",
+    })
 
 
 @app.get("/")

@@ -4,8 +4,9 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
+from psycopg.errors import UndefinedTable
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from backend.db.config import DatabaseSettings
 from backend.db.mapping import FIELDS, to_api, to_database
@@ -14,6 +15,10 @@ from backend.db.session import create_database_engine, create_session_factory, s
 
 class Conflict(Exception):
     """A recognized database constraint violation."""
+
+
+class FavoritesSchemaMissing(Exception):
+    """The favorites query requires marketplace migration 002."""
 
 
 CONFLICTS = {
@@ -106,8 +111,16 @@ class Records:
         key = FIELDS[table]["id"]
         self.session.execute(text(f"DELETE FROM {table} WHERE {key} = :id"), {"id": record_id})
 
+    def _favorite_rows(self, sql, params):
+        try:
+            return self._rows(sql, params)
+        except ProgrammingError as error:
+            if not isinstance(error.orig, UndefinedTable):
+                raise
+            raise FavoritesSchemaMissing from None
+
     def saved_spots(self, user_id):
-        rows = self._rows(
+        rows = self._favorite_rows(
             """SELECT s.* FROM favorites f JOIN parking_spots s ON s.spot_id = f.spot_id
                WHERE f.user_id = :user_id ORDER BY f.favorite_id DESC""",
             {"user_id": user_id},
@@ -120,7 +133,7 @@ class Records:
                ON CONFLICT (user_id, spot_id) DO NOTHING"""
             if saved else "DELETE FROM favorites WHERE user_id = :user_id AND spot_id = :spot_id"
         )
-        self.session.execute(text(sql), {"user_id": user_id, "spot_id": spot_id})
+        self._favorite_rows(sql, {"user_id": user_id, "spot_id": spot_id})
 
     def owner_reservations(self, owner_id):
         rows = self._rows(

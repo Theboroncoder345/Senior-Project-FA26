@@ -273,8 +273,21 @@ def test_marketplace_migration_preserves_bookings_and_releases_cancelled_window(
         connection.exec_driver_sql("ALTER TABLE reservations DROP CONSTRAINT reservations_no_overlap, DROP COLUMN status")
         connection.exec_driver_sql("""ALTER TABLE reservations ADD CONSTRAINT reservations_no_overlap
             EXCLUDE USING gist (spot_id WITH =, tstzrange(start_time, end_time, '[)') WITH &&)""")
+    favorites = "/users/me/favorites"
+    favorite = f"{favorites}/{booking['spot_id']}"
+    for method, url in (("GET", favorites), ("PUT", favorite), ("DELETE", favorite)):
+        response = client.request(method, url, headers={"Origin": "http://localhost:5173"})
+        assert response.status_code == 503
+        assert response.headers["Access-Control-Allow-Origin"] == "http://localhost:5173"
+        assert response.json()["code"] == "favorites_schema_missing"
+        assert "SELECT" not in response.text
+
     for _ in range(2):
         run_script("migrations/002_marketplace_features.sql")
+    assert client.get(favorites).json() == []
+    assert client.put(favorite).json() == {"saved": True}
+    assert [spot["id"] for spot in client.get(favorites).json()] == [booking["spot_id"]]
+    assert client.delete(favorite).json() == {"saved": False}
     path = f"/reservations/{reservation['id']}"
     assert client.get(path).json() == reservation
     assert client.delete(path).status_code == 200

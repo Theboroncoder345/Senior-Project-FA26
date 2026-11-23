@@ -1,9 +1,10 @@
 const API_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || 'http://127.0.0.1:8000').replace(/\/+$/, '')
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, code) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
@@ -67,7 +68,7 @@ export async function apiRequest(path, { body, rawBody, authenticated = true, ..
       422: detail || (fieldError ? fieldError.msg.replace(/^Value error, /, '') : 'Please check your entries.'),
     }
     if (authenticated && response.status === 401 && !options.signal?.aborted) clearAccessToken()
-    throw new ApiError(messages[response.status] || 'The server could not complete the request. Please try again.', response.status)
+    throw new ApiError(messages[response.status] || 'The server could not complete the request. Please try again.', response.status, data?.code)
   }
   if (data === undefined) throw new ApiError('The server returned an unexpected response. Please try again.', 0)
   return data

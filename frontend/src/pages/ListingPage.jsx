@@ -93,7 +93,7 @@ function ListingDetail({ id }) {
             <h1 className={styles.title}>{listing.title || listing.address}</h1>
             {listing.title && <p>{listing.address}</p>}
             <FavoriteButton listing={listing} favorites={favorites} />
-            {favorites.error && <p role="alert">Saved parking is unavailable. <button onClick={favorites.reload}>Try again</button></p>}
+            {favorites.error && <p role="alert">{favorites.error} <button onClick={favorites.reload}>Try again</button></p>}
           </div>
           <div className={styles.priceTag}>
             <span className={styles.priceAmount}>${listing.price}</span>

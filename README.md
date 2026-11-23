@@ -58,9 +58,16 @@ need runtime dependencies.
 ### Start FastAPI
 
 With the virtual environment activated, initialize PostgreSQL once using
-[the database setup steps](database/README.md). Apply the listing-details
-migration if you are upgrading an existing ParkShare database. Copy `.env.example` to `.env` if you need a local configuration
-file, fill in the connection URL, and export it when starting the API.
+[the database setup steps](database/README.md). When upgrading an existing ParkShare database, apply the listing-details and
+marketplace migrations in order. If migration 001 is already installed on the
+local `parking-postgres` container, apply migration 002 from the repository root:
+
+```sh
+docker exec -i parking-postgres psql -X -U parking_user -d parking_marketplace -v ON_ERROR_STOP=1 < database/migrations/002_marketplace_features.sql
+```
+
+The API reads `DATABASE_URL` from the process environment. Copy
+`.env.example` to `.env`, fill in the connection URL, and export it when starting the API.
 
 ```sh
 # From the repository root, with a local shell-compatible .env:

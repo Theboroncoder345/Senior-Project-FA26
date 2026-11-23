@@ -14,7 +14,7 @@ export default function SavedPage() {
         <div className={styles.sectionHeader}><h1 className={styles.sectionTitle}>Saved parking</h1></div>
         {favorites.loading && <p role="status">Loading saved parking…</p>}
         {favorites.error && (
-          <p role="alert">{favorites.error.message} <button onClick={favorites.reload}>Try again</button></p>
+          <p role="alert">{favorites.error} <button onClick={favorites.reload}>Try again</button></p>
         )}
         {!favorites.loading && !favorites.error && (spots.length ? (
           <div className={styles.grid}>

@@ -44,6 +44,13 @@ psql -v ON_ERROR_STOP=1 -f database/migrations/001_demo_listing_details.sql
 psql -v ON_ERROR_STOP=1 -f database/migrations/002_marketplace_features.sql
 ```
 
+Migration 002 preserves existing rows and runs in a single transaction.
+Applying it again to a compatible schema recreates the reservation overlap
+constraint and its index, taking a lock on the reservations table. Apply it once
+per environment during normal upgrades. A fresh install already includes these
+changes. If Saved parking reports that its database is uninitialized, check
+the running API's exported `DATABASE_URL` and apply 002 to that database.
+
 For earlier database layouts, compare against the current schema first. The optional
 seed runs once and uses generated IDs. Its demo owner has no password. Use
 `POST /auth/register` to create an account that can sign in.

@@ -138,7 +138,7 @@ export default function HomePage() {
           <p role="alert">{listings.error.message} <button type="button" onClick={listings.reload}>Try again</button></p>
         )}
 
-        {favorites.error && <p role="alert">Saved parking is unavailable. <button onClick={favorites.reload}>Try again</button></p>}
+        {favorites.error && <p role="alert">{favorites.error} <button onClick={favorites.reload}>Try again</button></p>}
 
         {/* Listings grid */}
         {filtered.length > 0 ? (
